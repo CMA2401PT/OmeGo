@@ -32,6 +32,7 @@ type PluginConfig struct {
 	Name    string      `json:"name"`
 	As      string      `json:"as"`
 	File    string      `json:"file"`
+	Require []string    `json:"require"`
 	Configs interface{} `json:"configs"`
 }
 
@@ -303,14 +304,22 @@ func loadPlugins(taskIO *task.TaskIO, config *PluginSystemConfig) func() {
 			plugin.As = plugin.Name
 		}
 		color.Blue("loading Plugin: %v. %v As %v from %v", i, plugin.Name, plugin.As, plugin.File)
-		pluginConfig, _ := json.Marshal(plugin.Configs)
+		if plugin.Require != nil {
+			for _, r := range plugin.Require {
+				_, hasK := collaborationContext[r]
+				if !hasK {
+					panic(fmt.Sprintf(`plugin: %v require plugin: "%v", but "%v" has not injected!`, plugin.Name, r, r))
+				}
+			}
+		}
+		pluginConfigBytes, _ := json.Marshal(plugin.Configs)
 		var pi plugins.Plugin
 		if plugin.File == "internal" {
 			p, ok := plugins.Pool()[plugin.Name]
 			if !ok {
 				panic(color.New(color.FgRed).Sprintf("No Such file Plugin: (%v)", plugin.Name))
 			} else {
-				pi = p().New(pluginConfig)
+				pi = p().New(pluginConfigBytes)
 			}
 		} else {
 
