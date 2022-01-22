@@ -1,0 +1,46 @@
+{
+  "version": "0.0.0",
+  "plugins":[
+    {
+      "name": "storage",
+      "as": "",
+      "file": "internal",
+      "configs": {
+        "root": "data"
+      }
+    },
+    {
+      "name": "cli_interface",
+      "as": "interface",
+      "file": "internal",
+      "configs": {}
+    },
+    {
+      "name": "show_game_chat",
+      "as": "",
+      "file": "internal",
+      "configs": {
+        "dests": [
+          "storage",
+          "interface"
+        ],
+        "hint": "chat"
+      }
+    },
+    {
+      "name": "game_chat",
+      "as": "",
+      "file": "internal",
+      "configs": {
+        "log_name": "chat-sent",
+        "sources": [
+          {
+            "perfix": "[backend] ",
+            "plugin": "interface",
+            "reg_name": "game-chat"
+          }
+        ]
+      }
+    }
+  ]
+}
