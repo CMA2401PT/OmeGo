@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"main.go/define"
 	"main.go/task"
 	"os"
@@ -23,10 +24,8 @@ type stringInterceptor struct {
 	name      string
 	intercept func(isJson bool, data string) (bool, string)
 }
-type CliConfig struct {
-}
 type CliInterface struct {
-	config                 *CliConfig
+	Prefix                 string `yaml:"chat_prefix"`
 	taskIO                 *task.TaskIO
 	collaborationContext   map[string]define.Plugin
 	stringSender           map[string]func(isJson bool, data string)
@@ -36,8 +35,7 @@ type CliInterface struct {
 }
 
 func (u *CliInterface) New(config []byte) define.Plugin {
-	u.config = &CliConfig{}
-	err := json.Unmarshal(config, u.config)
+	err := yaml.Unmarshal(config, u)
 	if err != nil {
 		panic(err)
 	}
@@ -116,15 +114,18 @@ func (u *CliInterface) REPL() {
 	fmt.Printf("")
 	reader := bufio.NewReader(os.Stdin)
 	s, _ := reader.ReadString('\n')
-
 	s = strings.TrimSpace(s)
+	var catch bool
 	for _, intercept := range u.stringInterceptors {
 		fmt.Printf("(%s) < %s\n", intercept.name, s)
-		var catch bool
 		catch, s = intercept.intercept(false, s)
 		if catch {
 			break
 		}
+	}
+	if !catch {
+		fmt.Printf("(%s) < %s\n", "game", u.Prefix+s)
+		u.taskIO.Say(false, u.Prefix+s)
 	}
 }
 

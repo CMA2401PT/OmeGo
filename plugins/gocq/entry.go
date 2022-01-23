@@ -3,6 +3,7 @@ package cqchat
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"log"
 	"main.go/define"
 	"main.go/task"
@@ -16,14 +17,14 @@ import (
 )
 
 type Group struct {
-	GID   int64  `json:"id"`
-	GName string `json:"name"`
+	GID   int64  `yaml:"id"`
+	GName string `yaml:"name"`
 }
 
 type ChatSettings struct {
-	Address           string `json:"address"`
+	Address           string `yaml:"address"`
 	Groups            []Group
-	GameMessageFormat string `json:"format"`
+	GameMessageFormat string `yaml:"format"`
 }
 
 type GoCQ struct {
@@ -171,7 +172,7 @@ func (cq *GoCQ) New(config []byte) define.Plugin {
 	cq.sendChan = make(chan string)
 	cq.firstInit = true
 	cq.stringSender = make(map[string]func(isJson bool, data string))
-	err := json.Unmarshal(config, cq.settings)
+	err := yaml.Unmarshal(config, cq.settings)
 	if err != nil {
 		panic(err)
 	}

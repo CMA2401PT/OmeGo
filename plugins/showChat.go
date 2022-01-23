@@ -1,29 +1,30 @@
 package plugins
 
 import (
-	"encoding/json"
+	"gopkg.in/yaml.v3"
 	"main.go/define"
 	"main.go/minecraft/protocol/packet"
 	"main.go/task"
+	"strconv"
 	"strings"
 )
 
 type Dst struct {
-	Interface string   `json:"plugin"`
-	Format    string   `json:"format"`
-	Filter    []string `json:"filter"`
+	Interface string   `yaml:"plugin"`
+	Format    string   `yaml:"format"`
+	Filter    []string `yaml:"filter"`
 }
 
 type ShowChat struct {
 	taskIO        *task.TaskIO
-	DstInterfaces []Dst  `json:"dests"`
-	Hint          string `json:"hint"`
+	DstInterfaces []Dst  `yaml:"dests"`
+	Hint          string `yaml:"hint"`
 	sends         []func(isJson bool, data string)
 }
 
 func (o *ShowChat) New(config []byte) define.Plugin {
 	o.DstInterfaces = make([]Dst, 0)
-	err := json.Unmarshal(config, o)
+	err := yaml.Unmarshal(config, o)
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +44,8 @@ func (o *ShowChat) Inject(taskIO *task.TaskIO, collaborationContext map[string]d
 
 func (o *ShowChat) onNewTextPacket(p packet.Packet, cbID int) {
 	pk := p.(*packet.Text)
-	r := strings.NewReplacer("[src]", pk.SourceName, "[msg]", pk.Message, "[type]", string(pk.TextType))
+
+	r := strings.NewReplacer("[src]", strings.TrimSpace(pk.SourceName), "[msg]", strings.TrimSpace(pk.Message), "[type]", strconv.Itoa(int(pk.TextType)))
 	for i, send := range o.sends {
 		filter := o.DstInterfaces[i].Filter
 		flag := true

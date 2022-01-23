@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"golang.org/x/term"
+	"gopkg.in/yaml.v3"
 	"io"
 	"main.go/define"
 	"main.go/fbauth"
@@ -30,16 +31,16 @@ type WriteBackConfig struct {
 }
 
 type PluginConfig struct {
-	Name    string      `json:"name"`
-	As      string      `json:"as"`
-	File    string      `json:"file"`
-	Require []string    `json:"require"`
-	Configs interface{} `json:"configs"`
+	Name    string      `yaml:"name"`
+	As      string      `yaml:"as"`
+	File    string      `yaml:"file"`
+	Require []string    `yaml:"require"`
+	Configs interface{} `yaml:"configs"`
 }
 
 type PluginSystemConfig struct {
-	Version string         `json:"version"`
-	Plugins []PluginConfig `json:"plugins"`
+	Version string         `yaml:"version"`
+	Plugins []PluginConfig `yaml:"plugins"`
 }
 
 type StartConfig struct {
@@ -177,7 +178,7 @@ func collectInfo() *StartConfig {
 	// load plugins config file
 	fp, err := os.Open(config.PluginConfigPath)
 	defer fp.Close()
-	err = json.NewDecoder(fp).Decode(&config.pluginsConfig)
+	err = yaml.NewDecoder(fp).Decode(&config.pluginsConfig)
 	if err != nil {
 		panic(fmt.Sprintf("Main: Error at Unmarshal plugin config file (%v) (%v)", config.PluginConfigPath, err))
 	}
@@ -313,7 +314,7 @@ func loadPlugins(taskIO *task.TaskIO, config *PluginSystemConfig) func() {
 				}
 			}
 		}
-		pluginConfigBytes, _ := json.Marshal(plugin.Configs)
+		pluginConfigBytes, _ := yaml.Marshal(plugin.Configs)
 		var pi define.Plugin
 		if plugin.File == "internal" {
 			p, ok := plugins.Pool()[plugin.Name]

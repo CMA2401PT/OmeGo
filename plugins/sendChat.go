@@ -1,22 +1,40 @@
 package plugins
 
 import (
-	"encoding/json"
+	"gopkg.in/yaml.v3"
 	"main.go/define"
 	"main.go/task"
 	"strings"
 )
 
+// this plugin is just for test
+//    {
+//      "name": "game_chat",
+//      "as": "",
+//      "file": "internal",
+//      "require": ["interface"],
+//      "configs": {
+//        "log_name": "chat-sent",
+//        "sources": [
+//          {
+//            "perfix": "[backend] ",
+//            "plugin": "interface",
+//            "reg_name": "game-chat"
+//          }
+//        ]
+//      }
+//    }
+
 type Source struct {
-	Perfix  string `json:"perfix"`
-	RegName string `json:"reg_name"`
-	Plugin  string `json:"plugin"`
+	Perfix  string `yaml:"perfix"`
+	RegName string `yaml:"reg_name"`
+	Plugin  string `yaml:"plugin"`
 }
 
 type SendChat struct {
-	Sources   []Source `json:"sources"`
-	LogName   string   `json:"log_name"`
-	LogPlugin string   `json:"log_plugin"`
+	Sources   []Source `yaml:"sources"`
+	LogName   string   `yaml:"log_name"`
+	LogPlugin string   `yaml:"log_plugin"`
 	taskIO    *task.TaskIO
 }
 
@@ -24,7 +42,7 @@ func (o *SendChat) New(config []byte) define.Plugin {
 	o.Sources = make([]Source, 0)
 	o.LogName = ""
 	o.LogPlugin = "storage"
-	err := json.Unmarshal(config, o)
+	err := yaml.Unmarshal(config, o)
 	if err != nil {
 		panic(err)
 	}

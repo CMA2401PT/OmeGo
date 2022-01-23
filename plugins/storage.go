@@ -3,6 +3,7 @@ package plugins
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"log"
 	"main.go/define"
 	"main.go/task"
@@ -11,10 +12,10 @@ import (
 )
 
 type StorageConfig struct {
-	Root   string `json:"root"`
-	Logs   string `json:"logs"`
-	ROJson string `json:"ro_json"`
-	DB     string `json:"db"`
+	Root   string `yaml:"root"`
+	Logs   string `yaml:"logs"`
+	ROJson string `yaml:"ro_json"`
+	DB     string `yaml:"db"`
 }
 
 type Storage struct {
@@ -26,7 +27,7 @@ type Storage struct {
 
 func (s *Storage) New(config []byte) define.Plugin {
 	storageConfig := &StorageConfig{}
-	err := json.Unmarshal(config, storageConfig)
+	err := yaml.Unmarshal(config, storageConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -61,12 +62,9 @@ func (s *Storage) Close() {
 
 func (s *Storage) RegStringSender(source string) func(isJson bool, data string) {
 	fileName := path.Join(s.logRoot, source) + ".log"
-	logFile, err := os.Open(fileName)
+	logFile, err := os.OpenFile(fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 644)
 	if err != nil && os.IsNotExist(err) {
-		logFile, err = os.Create(fileName)
-		if err != nil {
-			panic(fmt.Sprintf("Storage-Create: cannot create %v (%v)", fileName, err))
-		}
+		panic(fmt.Sprintf("Storage-Create: cannot create or append %v (%v)", fileName, err))
 	}
 	s.closeFn = append(s.closeFn, func() {
 		logFile.Close()
