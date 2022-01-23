@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"encoding/json"
+	"main.go/define"
 	"main.go/task"
 	"strings"
 )
@@ -19,7 +20,7 @@ type SendChat struct {
 	taskIO    *task.TaskIO
 }
 
-func (o *SendChat) New(config []byte) Plugin {
+func (o *SendChat) New(config []byte) define.Plugin {
 	o.Sources = make([]Source, 0)
 	o.LogName = ""
 	o.LogPlugin = "storage"
@@ -41,7 +42,7 @@ func (o *SendChat) onNewText(isJson bool, perfix string, data string) (bool, str
 	return true, data
 }
 
-func (o *SendChat) Inject(taskIO *task.TaskIO, collaborationContext map[string]Plugin) Plugin {
+func (o *SendChat) Inject(taskIO *task.TaskIO, collaborationContext map[string]define.Plugin) define.Plugin {
 	o.taskIO = taskIO
 	var log func(isJson bool, data string)
 	if o.LogName != "" {

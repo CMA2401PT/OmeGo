@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"main.go/define"
 	"main.go/task"
 	"os"
 	"strings"
@@ -27,14 +28,14 @@ type CliConfig struct {
 type CliInterface struct {
 	config                 *CliConfig
 	taskIO                 *task.TaskIO
-	collaborationContext   map[string]Plugin
+	collaborationContext   map[string]define.Plugin
 	stringSender           map[string]func(isJson bool, data string)
 	stringInterceptorCount int
 	stringInterceptors     map[int]stringInterceptor
 	screenLock             chan int
 }
 
-func (u *CliInterface) New(config []byte) Plugin {
+func (u *CliInterface) New(config []byte) define.Plugin {
 	u.config = &CliConfig{}
 	err := json.Unmarshal(config, u.config)
 	if err != nil {
@@ -47,7 +48,7 @@ func (u *CliInterface) New(config []byte) Plugin {
 	return u
 }
 
-func (u *CliInterface) Inject(taskIO *task.TaskIO, collaborationContext map[string]Plugin) Plugin {
+func (u *CliInterface) Inject(taskIO *task.TaskIO, collaborationContext map[string]define.Plugin) define.Plugin {
 	u.taskIO = taskIO
 	u.collaborationContext = collaborationContext
 	return u

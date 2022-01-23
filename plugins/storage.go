@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"main.go/define"
 	"main.go/task"
 	"os"
 	"path"
@@ -23,7 +24,7 @@ type Storage struct {
 	closeFn    []func()
 }
 
-func (s *Storage) New(config []byte) Plugin {
+func (s *Storage) New(config []byte) define.Plugin {
 	storageConfig := &StorageConfig{}
 	err := json.Unmarshal(config, storageConfig)
 	if err != nil {
@@ -48,7 +49,7 @@ func (s *Storage) Routine() {
 
 }
 
-func (s *Storage) Inject(taskIO *task.TaskIO, collaborationContext map[string]Plugin) Plugin {
+func (s *Storage) Inject(taskIO *task.TaskIO, collaborationContext map[string]define.Plugin) define.Plugin {
 	return s
 }
 

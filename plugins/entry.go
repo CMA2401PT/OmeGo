@@ -1,28 +1,23 @@
 package plugins
 
 import (
-	"main.go/task"
+	"main.go/define"
+	cqchat "main.go/plugins/gocq"
 )
 
-type Plugin interface {
-	New(config []byte) Plugin
-	Inject(taskIO *task.TaskIO, collaborationContext map[string]Plugin) Plugin
-	Routine()
-	Close()
-}
-
-var pool map[string]func() Plugin
+var pool map[string]func() define.Plugin
 var isInit bool
 
-func Pool() map[string]func() Plugin {
+func Pool() map[string]func() define.Plugin {
 	if !isInit {
-		pool = make(map[string]func() Plugin)
+		pool = make(map[string]func() define.Plugin)
 
 		// Registry
-		pool["storage"] = func() Plugin { return &Storage{} }
-		pool["cli_interface"] = func() Plugin { return &CliInterface{} }
-		pool["show_game_chat"] = func() Plugin { return &ShowChat{} }
-		pool["game_chat"] = func() Plugin { return &SendChat{} }
+		pool["storage"] = func() define.Plugin { return &Storage{} }
+		pool["cli_interface"] = func() define.Plugin { return &CliInterface{} }
+		pool["show_game_chat"] = func() define.Plugin { return &ShowChat{} }
+		pool["game_chat"] = func() define.Plugin { return &SendChat{} }
+		pool["cq_interface"] = func() define.Plugin { return &cqchat.GoCQ{} }
 
 		isInit = true
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"golang.org/x/term"
 	"io"
+	"main.go/define"
 	"main.go/fbauth"
 	"main.go/plugins"
 	"main.go/shield"
@@ -59,7 +60,7 @@ type StartConfig struct {
 	// Shield Config
 	ShieldConfig shield.ShieldConfig `json:"shield_config"`
 	// Plugin Config
-	PluginsConfig    PluginSystemConfig
+	pluginsConfig    PluginSystemConfig
 	PluginConfigPath string `json:"plugin_config_path"`
 	// Aux
 	WriteBackConfig WriteBackConfig `json:"write_back"`
@@ -176,7 +177,7 @@ func collectInfo() *StartConfig {
 	// load plugins config file
 	fp, err := os.Open(config.PluginConfigPath)
 	defer fp.Close()
-	err = json.NewDecoder(fp).Decode(&config.PluginsConfig)
+	err = json.NewDecoder(fp).Decode(&config.pluginsConfig)
 	if err != nil {
 		panic(fmt.Sprintf("Main: Error at Unmarshal plugin config file (%v) (%v)", config.PluginConfigPath, err))
 	}
@@ -287,7 +288,7 @@ func main() {
 	mcShield.LoginTokenGenerator = authenticator.GenerateToken
 	mcShield.PacketInterceptor = authenticator.Intercept
 
-	closeFn := loadPlugins(taskIO, &config.PluginsConfig)
+	closeFn := loadPlugins(taskIO, &config.pluginsConfig)
 	defer closeFn()
 
 	mcShield.Routine()
@@ -298,7 +299,7 @@ func loadPlugins(taskIO *task.TaskIO, config *PluginSystemConfig) func() {
 		panic("Main-loadPlugins: Version Not Support!")
 	}
 	closeFns := make([]func(), 0)
-	collaborationContext := make(map[string]plugins.Plugin)
+	collaborationContext := make(map[string]define.Plugin)
 	for i, plugin := range config.Plugins {
 		if plugin.As == "" {
 			plugin.As = plugin.Name
@@ -313,7 +314,7 @@ func loadPlugins(taskIO *task.TaskIO, config *PluginSystemConfig) func() {
 			}
 		}
 		pluginConfigBytes, _ := json.Marshal(plugin.Configs)
-		var pi plugins.Plugin
+		var pi define.Plugin
 		if plugin.File == "internal" {
 			p, ok := plugins.Pool()[plugin.Name]
 			if !ok {

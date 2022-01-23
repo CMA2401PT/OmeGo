@@ -16,14 +16,29 @@
       "configs": {}
     },
     {
+      "name": "cq_interface",
+      "file": "internal",
+      "configs": {
+        "address":":6700",
+        "groups":[{
+          "id":958915720,
+          "name":"Q"
+        }],
+        "format":"([src])[user]: [msg]"
+      }
+    },
+    {
       "name": "show_game_chat",
       "as": "",
       "file": "internal",
       "require": ["interface"],
       "configs": {
         "dests": [
-          "storage",
-          "interface"
+          {"plugin":"storage","format": "[src]:[msg] ([type])"},
+          {"plugin":"interface","format": "[src]:[msg] ([type])"},
+          {"plugin":"cq_interface","format": "[src]:[msg]",
+            "filter": ["not me","chat only"]
+          }
         ],
         "hint": "chat"
       }
@@ -32,7 +47,7 @@
       "name": "game_chat",
       "as": "",
       "file": "internal",
-      "require": ["Interface"],
+      "require": ["interface"],
       "configs": {
         "log_name": "chat-sent",
         "sources": [
