@@ -17,6 +17,7 @@ import (
 	"main.go/task"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
 	"syscall"
 	"time"
@@ -290,7 +291,18 @@ func main() {
 	mcShield.PacketInterceptor = authenticator.Intercept
 
 	closeFn := loadPlugins(taskIO, &config.pluginsConfig)
-	defer closeFn()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+
+	// make sure data are saved
+	go func() {
+		s := <-c
+		fmt.Println("Got signal:", s)
+		closeFn()
+		fmt.Println("Close Functions done")
+		os.Exit(0)
+	}()
 
 	mcShield.Routine()
 }

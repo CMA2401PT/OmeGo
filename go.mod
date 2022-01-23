@@ -9,6 +9,7 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.4.2
 	github.com/klauspost/compress v1.11.1
+	github.com/mattn/go-sqlite3 v1.14.10 // indirect
 	github.com/muhammadmuzzammil1998/jsonc v0.0.0-20211230184646-baf1f7156737
 	github.com/pterm/pterm v0.12.34 // indirect
 	github.com/sandertv/go-raknet v1.9.1

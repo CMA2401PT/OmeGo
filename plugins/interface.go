@@ -11,15 +11,6 @@ import (
 	"strings"
 )
 
-type StringWriteInterface interface {
-	RegStringSender(name string) func(isJson bool, data string)
-}
-
-type StringReadInterface interface {
-	RegStringInterceptor(name string, intercept func(isJson bool, data string) (bool, string)) int
-	RemoveStringInterceptor(interceptID int)
-}
-
 type stringInterceptor struct {
 	name      string
 	intercept func(isJson bool, data string) (bool, string)

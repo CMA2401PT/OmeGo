@@ -16,7 +16,7 @@ func Pool() map[string]func() define.Plugin {
 		pool["storage"] = func() define.Plugin { return &Storage{} }
 		pool["cli_interface"] = func() define.Plugin { return &CliInterface{} }
 		pool["show_game_chat"] = func() define.Plugin { return &ShowChat{} }
-		pool["game_chat"] = func() define.Plugin { return &SendChat{} }
+		pool["send_cmd_line"] = func() define.Plugin { return &SendCmdLine{} }
 		pool["cq_interface"] = func() define.Plugin { return &cqchat.GoCQ{} }
 
 		isInit = true

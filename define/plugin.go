@@ -8,3 +8,14 @@ type Plugin interface {
 	Routine()
 	Close()
 }
+
+type StringWriteInterface interface {
+	RegStringSender(name string) func(isJson bool, data string)
+}
+
+type StringReadInterface interface {
+	RegStringInterceptor(name string, intercept func(isJson bool, data string) (bool, string)) int
+	RemoveStringInterceptor(interceptID int)
+}
+
+type InterceptFn func(isJson bool, data string) (bool, string)

@@ -34,3 +34,12 @@ plugins:
 #            - "not me"
 #            - "chat only"
       hint: chat
+  - name: send_cmd_line
+    file: internal
+    configs:
+      sources:
+        - plugin: interface
+          reg_name: send_cmd_line
+          prefix: /
+      log_name: send_solo_cmd_line
+      log_plugin: storage

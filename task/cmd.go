@@ -40,9 +40,9 @@ func (io *TaskIO) LockCMDAndFBOn() *TaskIOWithLock {
 	beforeSwitchCMDFB := io.sendCommandFeedBack
 	ret := &TaskIOWithLock{origTaskIO: io, beforeSwitchCMDFB: beforeSwitchCMDFB, ShieldIOWithLock: io.ShieldIO.Lock()}
 	// previous packet maybe sendcommandfeedback false and haven't returned yet
-	//if beforeSwitchCMDFB {
-	//	return ret
-	//}
+	if beforeSwitchCMDFB {
+		return ret
+	}
 	lock := sync.Mutex{}
 	lock.Lock()
 	pk, reqUUID := io.GenCMD("gamerule sendcommandfeedback true")
@@ -102,7 +102,7 @@ func (io *TaskIOWithLock) UnlockAndOff() *TaskIO {
 	return io.origTaskIO
 }
 func (io *TaskIOWithLock) UnlockAndRestore() *TaskIO {
-	if !io.beforeSwitchCMDFB {
+	if io.beforeSwitchCMDFB {
 		io.ShieldIOWithLock.UnLock()
 		return io.origTaskIO
 	}

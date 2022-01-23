@@ -34,7 +34,7 @@ func (o *ShowChat) New(config []byte) define.Plugin {
 func (o *ShowChat) Inject(taskIO *task.TaskIO, collaborationContext map[string]define.Plugin) define.Plugin {
 	o.sends = make([]func(isJson bool, data string), 0)
 	for _, dst := range o.DstInterfaces {
-		dstInterface := collaborationContext[dst.Interface].(StringWriteInterface)
+		dstInterface := collaborationContext[dst.Interface].(define.StringWriteInterface)
 		o.sends = append(o.sends, dstInterface.RegStringSender(o.Hint))
 	}
 	o.taskIO = taskIO

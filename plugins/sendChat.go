@@ -64,10 +64,10 @@ func (o *SendChat) Inject(taskIO *task.TaskIO, collaborationContext map[string]d
 	o.taskIO = taskIO
 	var log func(isJson bool, data string)
 	if o.LogName != "" {
-		log = collaborationContext[o.LogPlugin].(StringWriteInterface).RegStringSender(o.LogName)
+		log = collaborationContext[o.LogPlugin].(define.StringWriteInterface).RegStringSender(o.LogName)
 	}
 	for _, s := range o.Sources {
-		src := collaborationContext[s.Plugin].(StringReadInterface)
+		src := collaborationContext[s.Plugin].(define.StringReadInterface)
 		src.RegStringInterceptor(s.RegName, func(isJson bool, data string) (bool, string) {
 			if log != nil {
 				log(false, s.Perfix+data)
