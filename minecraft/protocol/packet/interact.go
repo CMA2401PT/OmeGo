@@ -1,17 +1,17 @@
 package packet
 
 import (
-	"github.com/go-gl/mathgl/mgl32"
 	"main.go/minecraft/protocol"
+
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 const (
-	_ = iota
-	_
+	_ = iota + 1
 	_
 	InteractActionLeaveVehicle
 	InteractActionMouseOverEntity
-	_
+	InteractActionNPCOpen
 	InteractActionOpenInventory
 )
 

@@ -9,13 +9,13 @@ import (
 	"log"
 	"net"
 	"os"
+	"main.go/minecraft/protocol"
+	"main.go/minecraft/protocol/packet"
+	"main.go/minecraft/resource"
 	"time"
 
 	"github.com/sandertv/go-raknet"
 	"go.uber.org/atomic"
-	"main.go/minecraft/protocol"
-	"main.go/minecraft/protocol/packet"
-	"main.go/minecraft/resource"
 )
 
 // ListenConfig holds settings that may be edited to change behaviour of a Listener.
@@ -44,6 +44,9 @@ type ListenConfig struct {
 	// This field should not be edited during runtime of the Listener to avoid race conditions. Use
 	// Listener.AddResourcePack() to add a resource pack after having called Listener.Listen().
 	ResourcePacks []*resource.Pack
+	// Biomes contains information about all biomes that the server has registered, which the client can use
+	// to render the world more effectively. If these are nil, the default biome definitions will be used.
+	Biomes map[string]interface{}
 	// TexturePacksRequired specifies if clients that join must accept the texture pack in order for them to
 	// be able to join the server. If they don't accept, they can only leave the server.
 	TexturePacksRequired bool
@@ -135,7 +138,7 @@ func (listener *Listener) Accept() (net.Conn, error) {
 
 // Disconnect disconnects a Minecraft Conn passed by first sending a disconnect with the message passed, and
 // closing the connection after. If the message passed is empty, the client will be immediately sent to the
-// player list instead of a disconnect screen.
+// server list instead of a disconnect screen.
 func (listener *Listener) Disconnect(conn *Conn, message string) error {
 	_ = conn.WritePacket(&packet.Disconnect{
 		HideDisconnectionScreen: message == "",
@@ -206,6 +209,7 @@ func (listener *Listener) createConn(netConn net.Conn) {
 	conn.packetFunc = listener.cfg.PacketFunc
 	conn.texturePacksRequired = listener.cfg.TexturePacksRequired
 	conn.resourcePacks = listener.cfg.ResourcePacks
+	conn.biomes = listener.cfg.Biomes
 	conn.gameData.WorldName = listener.status().ServerName
 	conn.authEnabled = !listener.cfg.AuthenticationDisabled
 

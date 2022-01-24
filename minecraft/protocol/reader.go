@@ -8,11 +8,11 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"main.go/minecraft/nbt"
 	"unsafe"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/google/uuid"
-	"main.go/minecraft/nbt"
 )
 
 // Reader implements reading operations for reading types from Minecraft packets. Each Packet implementation
@@ -186,6 +186,39 @@ func (r *Reader) UUID(x *uuid.UUID) {
 		arr[i], arr[j] = b[j], b[i]
 	}
 	*x = arr
+}
+
+// PlayerInventoryAction reads a PlayerInventoryAction.
+func (r *Reader) PlayerInventoryAction(x *UseItemTransactionData) {
+	r.Varint32(&x.LegacyRequestID)
+	if x.LegacyRequestID < -1 && (x.LegacyRequestID&1) == 0 {
+		var l uint32
+		r.Varuint32(&l)
+
+		x.LegacySetItemSlots = make([]LegacySetItemSlot, l)
+
+		for _, slot := range x.LegacySetItemSlots {
+			SetItemSlot(r, &slot)
+		}
+	}
+
+	var l uint32
+	r.Varuint32(&l)
+
+	x.Actions = make([]InventoryAction, l)
+
+	for _, a := range x.Actions {
+		InvAction(r, &a)
+	}
+
+	r.Varuint32(&x.ActionType)
+	r.BlockPos(&x.BlockPosition)
+	r.Varint32(&x.BlockFace)
+	r.Varint32(&x.HotBarSlot)
+	r.ItemInstance(&x.HeldItem)
+	r.Vec3(&x.Position)
+	r.Vec3(&x.ClickedPosition)
+	r.Varuint32(&x.BlockRuntimeID)
 }
 
 // EntityMetadata reads an entity metadata map from the underlying buffer into map x.
@@ -372,6 +405,26 @@ func (r *Reader) Item(x *ItemStack) {
 	if x.NetworkID == bufReader.shieldID {
 		var blockingTick int64
 		bufReader.Int64(&blockingTick)
+	}
+}
+
+// MaterialReducer writes a material reducer to the writer.
+func (r *Reader) MaterialReducer(m *MaterialReducer) {
+	var mix int32
+	var itemCountsLen uint32
+
+	r.Varint32(&mix)
+	r.Varuint32(&itemCountsLen)
+
+	m.InputItem = ItemType{NetworkID: mix << 16, MetadataValue: uint32(mix & 0x7fff)}
+
+	for i := uint32(0); i < itemCountsLen; i++ {
+		var out MaterialReducerOutput
+
+		r.Varint32(&out.NetworkID)
+		r.Varint32(&out.Count)
+
+		m.Outputs = append(m.Outputs, out)
 	}
 }
 

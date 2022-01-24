@@ -14,8 +14,8 @@ const (
 	TextTypeSystem
 	TextTypeWhisper
 	TextTypeAnnouncement
-	TextTypeObject
 	TextTypeObjectWhisper
+	TextTypeObject
 )
 
 // Text is sent by the client to the server to send chat messages, and by the server to the client to forward
@@ -72,14 +72,6 @@ func (pk *Text) Marshal(w *protocol.Writer) {
 	}
 	w.String(&pk.XUID)
 	w.String(&pk.PlatformChatID)
-	if pk.TextType == TextTypeChat {
-		b1 := byte(2)
-		s1 := "PlayerId"
-		s2 := "-12345678"
-		w.Uint8(&b1)
-		w.String(&s1)
-		w.String(&s2)
-	}
 }
 
 // Unmarshal ...

@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"image/color"
 	"io"
+	"main.go/minecraft/nbt"
 	"reflect"
+	"sort"
 	"unsafe"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/google/uuid"
-	"main.go/minecraft/nbt"
 )
 
 // Writer implements writing methods for data types from Minecraft packets. Each Packet implementation has one
@@ -117,11 +118,50 @@ func (w *Writer) UUID(x *uuid.UUID) {
 	_, _ = w.w.Write(b)
 }
 
+// PlayerInventoryAction writes a PlayerInventoryAction.
+func (w *Writer) PlayerInventoryAction(x *UseItemTransactionData) {
+	w.Varint32(&x.LegacyRequestID)
+	if x.LegacyRequestID < -1 && (x.LegacyRequestID&1) == 0 {
+		l := uint32(len(x.LegacySetItemSlots))
+		w.Varuint32(&l)
+
+		for _, slot := range x.LegacySetItemSlots {
+			SetItemSlot(w, &slot)
+		}
+	}
+	l := uint32(len(x.Actions))
+	w.Varuint32(&l)
+
+	for _, a := range x.Actions {
+		InvAction(w, &a)
+	}
+	w.Varuint32(&x.ActionType)
+	w.BlockPos(&x.BlockPosition)
+	w.Varint32(&x.BlockFace)
+	w.Varint32(&x.HotBarSlot)
+	w.ItemInstance(&x.HeldItem)
+	w.Vec3(&x.Position)
+	w.Vec3(&x.ClickedPosition)
+	w.Varuint32(&x.BlockRuntimeID)
+}
+
 // EntityMetadata writes an entity metadata map x to the underlying buffer.
 func (w *Writer) EntityMetadata(x *map[uint32]interface{}) {
 	l := uint32(len(*x))
 	w.Varuint32(&l)
-	for key, value := range *x {
+
+	// Entity metadata needs to be sorted for some functionality to work. NPCs, for example, need to have their fields
+	// set in the wrong order, or the text or buttons won't be shown to the client. See #88.
+	// Sorting these is probably not very fast, but it'll have to do for now: We can change entity metadata to a slice
+	// later on.
+	keys := make([]int, 0, l)
+	for k := range *x {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	for _, k := range keys {
+		key := uint32(k)
+		value := (*x)[uint32(k)]
 		w.Varuint32(&key)
 		switch v := value.(type) {
 		case byte:
@@ -257,7 +297,22 @@ func (w *Writer) Item(x *ItemStack) {
 		bufWriter.Int64(&blockingTick)
 	}
 
+	extraData = buf.Bytes()
 	w.ByteSlice(&extraData)
+}
+
+// MaterialReducer writes a material reducer to the writer.
+func (w *Writer) MaterialReducer(m *MaterialReducer) {
+	mix := (m.InputItem.NetworkID << 16) | int32(m.InputItem.MetadataValue)
+	itemCountsLen := uint32(len(m.Outputs))
+
+	w.Varint32(&mix)
+	w.Varuint32(&itemCountsLen)
+
+	for _, out := range m.Outputs {
+		w.Varint32(&out.NetworkID)
+		w.Varint32(&out.Count)
+	}
 }
 
 // Varint64 writes an int64 as 1-10 bytes to the underlying buffer.

@@ -2,10 +2,10 @@ package protocol
 
 import (
 	"image/color"
+	"main.go/minecraft/nbt"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/google/uuid"
-	"main.go/minecraft/nbt"
 )
 
 // IO represents a packet IO direction. Implementations of this interface are Reader and Writer. Reader reads
@@ -42,6 +42,7 @@ type IO interface {
 	EntityMetadata(x *map[uint32]interface{})
 	Item(x *ItemStack)
 	ItemInstance(i *ItemInstance)
+	MaterialReducer(x *MaterialReducer)
 
 	UnknownEnumOption(value interface{}, enum string)
 	InvalidValue(value interface{}, forField, reason string)

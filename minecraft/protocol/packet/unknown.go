@@ -2,7 +2,6 @@ package packet
 
 import (
 	"fmt"
-
 	"main.go/minecraft/protocol"
 )
 

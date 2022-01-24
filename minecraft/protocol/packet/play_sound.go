@@ -1,8 +1,9 @@
 package packet
 
 import (
-	"github.com/go-gl/mathgl/mgl32"
 	"main.go/minecraft/protocol"
+
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 // PlaySound is sent by the server to play a sound to the client. Some of the sounds may only be started using

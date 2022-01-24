@@ -1,8 +1,9 @@
 package packet
 
 import (
-	"github.com/go-gl/mathgl/mgl32"
 	"main.go/minecraft/protocol"
+
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 // PlayerInput is sent by the client to the server when the player is moving but the server does not allow it

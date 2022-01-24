@@ -1,8 +1,9 @@
 package minecraft
 
 import (
-	"github.com/go-gl/mathgl/mgl32"
 	"main.go/minecraft/protocol"
+
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 // GameData is a loose wrapper around a part of the data found in the StartGame packet. It holds data sent
@@ -29,6 +30,9 @@ type GameData struct {
 	// This field may be set to 5 to make the client fall back to the game mode set in the WorldGameMode
 	// field.
 	PlayerGameMode int32
+	// BaseGameVersion is the version of the game from which Vanilla features will be used. The exact function
+	// of this field isn't clear.
+	BaseGameVersion string
 	// PlayerPosition is the spawn position of the player in the world. In servers this is often the same as
 	// the world's spawn position found below.
 	PlayerPosition mgl32.Vec3
@@ -52,6 +56,9 @@ type GameData struct {
 	GameRules []protocol.GameRule
 	// Time is the total time that has elapsed since the start of the world.
 	Time int64
+	// ServerBlockStateChecksum is a checksum to ensure block states between the server and client match.
+	// This can simply be left empty, and the client will avoid trying to verify it.
+	ServerBlockStateChecksum uint64
 	// CustomBlocks is a list of custom blocks added to the game by the server. These blocks all have a name
 	// and block properties.
 	CustomBlocks []protocol.BlockEntry

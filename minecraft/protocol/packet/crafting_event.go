@@ -1,8 +1,9 @@
 package packet
 
 import (
-	"github.com/google/uuid"
 	"main.go/minecraft/protocol"
+
+	"github.com/google/uuid"
 )
 
 // CraftingEvent is sent by the client when it crafts a particular item. Note that this packet may be fully

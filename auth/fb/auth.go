@@ -1,4 +1,4 @@
-package fbauth
+package fb
 
 import (
 	"bytes"

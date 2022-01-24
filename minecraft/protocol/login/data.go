@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"main.go/minecraft/protocol"
 	"net"
 	"regexp"
 	"strconv"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
-	"main.go/minecraft/protocol"
 )
 
 // IdentityData contains identity data of the player logged in. It is found in one of the JWT claims signed
@@ -25,14 +25,7 @@ type IdentityData struct {
 	Identity string `json:"identity"`
 	// DisplayName is the username of the player, which may be changed by the user. It should for that reason
 	// not be used as a key to store information.
-	DisplayName   string `json:"displayName"`
-	NeteaseSid    string `json:"netease_sid"`
-	Uid           int64  `json:"uid"`
-	Version       int64  `json:"version"`
-	Env           string `json:"env"`
-	Platform      string `json:"platform"`
-	EngineVersion string `json:"engineVersion"`
-	PatchVersion  string `json:"patchVersion"`
+	DisplayName string `json:"displayName"`
 	// TitleID is a numerical ID present only if the user is logged into XBL. It holds the title ID (XBL
 	// related) of the version that the player is on. Some of these IDs may be found below.
 	// Win10: 896928775
@@ -40,6 +33,14 @@ type IdentityData struct {
 	// Nintendo: 2047319603
 	// Note that these IDs are protected using XBOX Live, making the spoofing of this data very difficult.
 	TitleID string `json:"titleId,omitempty"`
+
+	// Netease MC
+	Uid           int64  `json:"uid"`
+	Version       int64  `json:"version"`
+	Env           string `json:"env"`
+	Platform      string `json:"platform"`
+	EngineVersion string `json:"engineVersion"`
+	PatchVersion  string `json:"patchVersion"`
 }
 
 // checkUsername is used to check if a username is valid according to the Microsoft specification: "You can
@@ -53,7 +54,7 @@ func (data IdentityData) Validate() error {
 	if _, err := strconv.ParseInt(data.XUID, 10, 64); err != nil && len(data.XUID) != 0 {
 		return fmt.Errorf("XUID must be parseable as an int64, but got %v", data.XUID)
 	}
-	if _, err := uuid.Parse(data.Identity); err != nil {
+	if id, err := uuid.Parse(data.Identity); err != nil || id == uuid.Nil {
 		return fmt.Errorf("UUID must be parseable as a valid UUID, but got %v", data.Identity)
 	}
 	if len(data.DisplayName) == 0 || len(data.DisplayName) > 15 {
@@ -143,6 +144,8 @@ type ClientData struct {
 	// SkinGeometry is a base64 JSON encoded structure of the geometry data of a skin, containing properties
 	// such as bones, uv, pivot etc.
 	SkinGeometry string `json:"SkinGeometryData"`
+	// SkinGeometryVersion is the version for SkinGeometry.
+	SkinGeometryVersion string `json:"SkinGeometryDataEngineVersion"`
 	// SkinID is a unique ID produced for the skin, for example 'c18e65aa-7b21-4637-9b63-8ad63622ef01_Alex'
 	// for the default Alex skin.
 	SkinID string `json:"SkinId"`

@@ -2,7 +2,6 @@ package packet
 
 import (
 	"math"
-
 	"main.go/minecraft/protocol"
 )
 

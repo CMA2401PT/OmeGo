@@ -3,7 +3,6 @@ package packet
 import (
 	"image/color"
 	"math"
-
 	"main.go/minecraft/protocol"
 )
 

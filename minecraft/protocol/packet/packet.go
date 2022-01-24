@@ -2,7 +2,6 @@ package packet
 
 import (
 	"io"
-
 	"main.go/minecraft/protocol"
 )
 

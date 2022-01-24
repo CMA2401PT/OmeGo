@@ -1,16 +1,14 @@
 package packet
 
 import (
-	"github.com/go-gl/mathgl/mgl32"
 	"main.go/minecraft/protocol"
+
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 const (
-	// Respawn packets with these states are sent by the server.
 	RespawnStateSearchingForSpawn = iota
 	RespawnStateReadyToSpawn
-
-	// A Respawn packet with this state is sent by the client.
 	RespawnStateClientReadyToSpawn
 )
 
