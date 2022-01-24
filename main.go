@@ -89,7 +89,7 @@ func collectInfo() *StartConfig {
 			MaskTermPassword: true,
 			UseFBVersion:     "use_current",
 			ServerPassword:   "ask",
-			FBVersionCodeUrl: "https://storage.fastbuilder.pro/hashes.json",
+			FBVersionCodeUrl: "https://storage.fastbuilder.pro/epsilon/hashes.json",
 			NoPassword:       true,
 			NoToken:          false,
 		},
