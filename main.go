@@ -10,8 +10,11 @@ import (
 	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 	"io"
+	"main.go/auth/fb"
+	"main.go/auth/inc"
+	_const "main.go/const"
 	"main.go/define"
-	"main.go/fbauth"
+	"main.go/minecraft/protocol/login"
 	"main.go/plugins"
 	"main.go/shield"
 	"main.go/task"
@@ -25,12 +28,6 @@ import (
 
 var argAuthConfigFile = flag.String("c", "", "config file path")
 
-type WriteBackConfig struct {
-	NoPassword    bool `json:"no_password"`
-	NoToken       bool `json:"no_token"`
-	writeBackPath string
-}
-
 type PluginConfig struct {
 	Name    string      `yaml:"name"`
 	As      string      `yaml:"as"`
@@ -43,8 +40,13 @@ type PluginSystemConfig struct {
 	Version string         `yaml:"version"`
 	Plugins []PluginConfig `yaml:"plugins"`
 }
-
-type StartConfig struct {
+type InternationalMCConfig struct {
+	Server            string             `json:"server_address"`
+	ResponseUser      string             `json:"response_user"`
+	LoginClientData   login.ClientData   `json:"login_client_data"`
+	LoginIdentityData login.IdentityData `json:"login_identity_data"`
+}
+type FastBuilderMCConfig struct {
 	MaskTermPassword bool `json:"mask_term_password"`
 	// FB Login in config
 	FBUserName       string `json:"user"`
@@ -59,44 +61,63 @@ type StartConfig struct {
 	ServerCode         string `json:"server"`
 	origServerPassword string // similar to origServerCode
 	ServerPassword     string `json:"server_password"`
+	NoPassword         bool   `json:"not_record_password"`
+	NoToken            bool   `json:"not_record_token"`
+}
+
+type StartConfig struct {
+	// the mc version between rental server and international be server is different
+	// so it cannot be decided by user
+	variant     int
+	FBMCConfig  FastBuilderMCConfig   `json:"fb_mc_config"`
+	IncMCConfig InternationalMCConfig `json:"international_mc_config"`
 	// Shield Config
 	ShieldConfig shield.ShieldConfig `json:"shield_config"`
 	// Plugin Config
 	pluginsConfig    PluginSystemConfig
 	PluginConfigPath string `json:"plugin_config_path"`
 	// Aux
-	WriteBackConfig WriteBackConfig `json:"write_back"`
+	writeBackPath string
 }
 
 func collectInfo() *StartConfig {
 	flag.Parse()
 	args := flag.Args()
 	config := StartConfig{
-		MaskTermPassword: true,
-		UseFBVersion:     "use_current",
-		ServerPassword:   "ask",
-		FBVersionCodeUrl: "https://storage.fastbuilder.pro/hashes.json",
+		variant: _const.VARIANT,
+		FBMCConfig: FastBuilderMCConfig{
+			MaskTermPassword: true,
+			UseFBVersion:     "use_current",
+			ServerPassword:   "ask",
+			FBVersionCodeUrl: "https://storage.fastbuilder.pro/epsilon/hashes.json",
+			NoPassword:       true,
+			NoToken:          false,
+		},
+		IncMCConfig: InternationalMCConfig{
+			Server:          "",
+			ResponseUser:    "",
+			LoginClientData: login.ClientData{},
+			LoginIdentityData: login.IdentityData{
+				DisplayName: "Bot",
+			},
+		},
 		PluginConfigPath: "plugins_config.json",
 		ShieldConfig: shield.ShieldConfig{
 			Respawn:         true,
 			MaxRetryTimes:   0,
 			MaxDelaySeconds: 32,
 		},
-		WriteBackConfig: WriteBackConfig{
-			NoPassword: true,
-			NoToken:    false,
-		},
 	}
 	authConfigFile := *argAuthConfigFile
-	config.WriteBackConfig.writeBackPath = authConfigFile
+	config.writeBackPath = authConfigFile
 	if authConfigFile == "" && len(args) > 0 {
 		authConfigFile = args[0]
 		args = args[1:]
-		config.WriteBackConfig.writeBackPath = authConfigFile
+		config.writeBackPath = authConfigFile
 	} else {
 		// 检查是否有默认配置文件 "config.json"
 		_, err := os.Lstat("config.json")
-		config.WriteBackConfig.writeBackPath = "config.json"
+		config.writeBackPath = "config.json"
 		if os.IsNotExist(err) {
 			fmt.Println("Main: No config provided, will create a config file automatically")
 		} else {
@@ -114,66 +135,96 @@ func collectInfo() *StartConfig {
 		}
 	}
 
-	// account
-	if config.FBToken == "" && (config.FBUserName == "" || config.FBPassword == "") {
-		// 询问用户名和密码
-		reader := bufio.NewReader(os.Stdin)
-		for config.FBUserName == "" {
-			fmt.Printf("FB User Name: ")
-			config.FBUserName, _ = reader.ReadString('\n')
-			config.FBUserName = strings.TrimRight(config.FBUserName, "\r\n")
-		}
-		for config.FBPassword == "" {
-			fmt.Printf("FB User Password: ")
-			if config.MaskTermPassword {
-				bytePassword, _ := term.ReadPassword(int(syscall.Stdin))
-				config.FBPassword = strings.TrimSpace(string(bytePassword))
-				fmt.Println("")
-			} else {
-				config.FBPassword, _ = reader.ReadString('\n')
-				config.FBPassword = strings.TrimRight(config.FBPassword, "\r\n")
+	if config.variant == _const.Variant_Rental {
+		fmt.Println("Rental Server Version: FB Config is required")
+	} else {
+		fmt.Println("International Bedrock Server version")
+	}
+
+	if config.variant == _const.Variant_Rental {
+		// FB account
+		if config.FBMCConfig.FBToken == "" && (config.FBMCConfig.FBUserName == "" || config.FBMCConfig.FBPassword == "") {
+			// 询问用户名和密码
+			reader := bufio.NewReader(os.Stdin)
+			for config.FBMCConfig.FBUserName == "" {
+				fmt.Printf("FB User Name: ")
+				config.FBMCConfig.FBUserName, _ = reader.ReadString('\n')
+				config.FBMCConfig.FBUserName = strings.TrimRight(config.FBMCConfig.FBUserName, "\r\n")
+			}
+			for config.FBMCConfig.FBPassword == "" {
+				fmt.Printf("FB User Password: ")
+				if config.FBMCConfig.MaskTermPassword {
+					bytePassword, _ := term.ReadPassword(int(syscall.Stdin))
+					config.FBMCConfig.FBPassword = strings.TrimSpace(string(bytePassword))
+					fmt.Println("")
+				} else {
+					config.FBMCConfig.FBPassword, _ = reader.ReadString('\n')
+					config.FBMCConfig.FBPassword = strings.TrimRight(config.FBMCConfig.FBPassword, "\r\n")
+				}
 			}
 		}
-	}
-	config.origServerCode = config.ServerCode
-	config.origServerPassword = config.ServerPassword
+		config.FBMCConfig.origServerCode = config.FBMCConfig.ServerCode
+		config.FBMCConfig.origServerPassword = config.FBMCConfig.ServerPassword
 
-	var serverCode, serverPassword string
-	if len(args) > 1 {
-		// get from command line args
-		serverComplex := args[0]
-		serverArgs := strings.Split(serverComplex, ":")
-		serverCode = serverArgs[0]
-		if len(serverArgs) > 1 {
-			serverPassword = serverArgs[1]
+		var serverCode, serverPassword string
+		if len(args) > 1 {
+			// get from command line args
+			serverComplex := args[0]
+			serverArgs := strings.Split(serverComplex, ":")
+			serverCode = serverArgs[0]
+			if len(serverArgs) > 1 {
+				serverPassword = serverArgs[1]
+			}
+		} else {
+			// get from config file
+			serverCode = config.FBMCConfig.ServerCode
+			serverPassword = config.FBMCConfig.ServerPassword
+		}
+		if serverCode == "" {
+			// 询问服务器和密码
+			reader := bufio.NewReader(os.Stdin)
+			for serverCode == "" {
+				fmt.Printf("Server Code: ")
+				serverCode, _ = reader.ReadString('\n')
+				serverCode = strings.TrimRight(serverCode, "\r\n")
+				config.FBMCConfig.ServerCode = serverCode
+			}
+
+		}
+		if serverPassword == "ask" {
+			fmt.Printf("Server Password: ")
+			if config.FBMCConfig.MaskTermPassword {
+				bytePassword, _ := term.ReadPassword(int(syscall.Stdin))
+				config.FBMCConfig.ServerPassword = strings.TrimSpace(string(bytePassword))
+				fmt.Println("")
+			} else {
+				reader := bufio.NewReader(os.Stdin)
+				serverPassword, _ = reader.ReadString('\n')
+				serverPassword = strings.TrimRight(serverPassword, "\r\n")
+				config.FBMCConfig.ServerPassword = serverPassword
+			}
 		}
 	} else {
-		// get from config file
-		serverCode = config.ServerCode
-		serverPassword = config.ServerPassword
-	}
-	if serverCode == "" {
-		// 询问服务器和密码
-		reader := bufio.NewReader(os.Stdin)
-		for serverCode == "" {
-			fmt.Printf("Server Code: ")
-			serverCode, _ = reader.ReadString('\n')
-			serverCode = strings.TrimRight(serverCode, "\r\n")
-			config.ServerCode = serverCode
-		}
-
-	}
-	if serverPassword == "ask" {
-		fmt.Printf("Server Password: ")
-		if config.MaskTermPassword {
-			bytePassword, _ := term.ReadPassword(int(syscall.Stdin))
-			config.ServerPassword = strings.TrimSpace(string(bytePassword))
-			fmt.Println("")
-		} else {
+		// International
+		if config.IncMCConfig.Server == "" {
 			reader := bufio.NewReader(os.Stdin)
-			serverPassword, _ = reader.ReadString('\n')
-			serverPassword = strings.TrimRight(serverPassword, "\r\n")
-			config.ServerPassword = serverPassword
+			serverAddr := ""
+			for serverAddr == "" {
+				fmt.Printf("Server Address (should be something like 127.0.0.1:19123): ")
+				serverAddr, _ = reader.ReadString('\n')
+				serverAddr = strings.TrimRight(serverAddr, "\r\n")
+				config.IncMCConfig.Server = serverAddr
+			}
+		}
+		if config.IncMCConfig.ResponseUser == "" {
+			reader := bufio.NewReader(os.Stdin)
+			ResponseUser := ""
+			for ResponseUser == "" {
+				fmt.Printf("Who Should Bot Response?: ")
+				ResponseUser, _ = reader.ReadString('\n')
+				ResponseUser = strings.TrimRight(ResponseUser, "\r\n")
+				config.IncMCConfig.ResponseUser = ResponseUser
+			}
 		}
 	}
 	// load plugins config file
@@ -225,15 +276,16 @@ func getVersionInfo(versionCodeUrl string) (string, error) {
 
 func writeBackConfig(config *StartConfig) {
 	copiedConfig := *config
-	if config.WriteBackConfig.NoPassword {
-		copiedConfig.FBPassword = ""
+	if config.FBMCConfig.NoPassword {
+		copiedConfig.FBMCConfig.FBPassword = ""
 	}
-	if config.WriteBackConfig.NoToken {
-		copiedConfig.FBToken = ""
+	if config.FBMCConfig.NoToken {
+		copiedConfig.FBMCConfig.FBToken = ""
 	}
-	copiedConfig.ServerCode = config.origServerCode
-	copiedConfig.ServerPassword = config.origServerPassword
-	fp, err := os.Create(copiedConfig.WriteBackConfig.writeBackPath)
+	copiedConfig.FBMCConfig.ServerCode = config.FBMCConfig.origServerCode
+	copiedConfig.FBMCConfig.ServerPassword = config.FBMCConfig.origServerPassword
+
+	fp, err := os.Create(copiedConfig.writeBackPath)
 	defer fp.Close()
 	if err != nil {
 		panic(fmt.Sprintf("Main: Fail to create updated config (%v)", err))
@@ -247,9 +299,7 @@ func writeBackConfig(config *StartConfig) {
 	}
 }
 
-func main() {
-	color.Blue("Collecting Infomation...")
-	config := collectInfo()
+func updateFBConfig(config FastBuilderMCConfig) FastBuilderMCConfig {
 	if config.UseFBVersion == "auto_update" || (config.UseFBVersion == "use_current" && config.FBCurrentVersion == "") {
 		version, err := getVersionInfo(config.FBVersionCodeUrl)
 		if err != nil {
@@ -258,7 +308,7 @@ func main() {
 		config.FBCurrentVersion = version
 	}
 	if config.FBToken == "" {
-		fbClient, err := fbauth.CreateClient()
+		fbClient, err := fb.CreateClient()
 		if err != nil {
 			panic(fmt.Errorf("Main: When update FB token, fail to create FB client (%v)", err))
 		}
@@ -269,6 +319,15 @@ func main() {
 		config.FBToken = fbToken
 		fbClient.Close()
 	}
+	return config
+}
+
+func main() {
+	color.Blue("Collecting Infomation...")
+	config := collectInfo()
+	if config.variant == _const.Variant_Rental {
+		config.FBMCConfig = updateFBConfig(config.FBMCConfig)
+	}
 	writeBackConfig(config)
 	color.Green("Information Collected!")
 
@@ -276,19 +335,31 @@ func main() {
 	//defer storage.Close()
 
 	color.Blue("Starting Shield...")
-	authenticator := &fbauth.Authenticator{
-		Identify: &fbauth.Identify{
-			FBToken:        config.FBToken,
-			FBVersion:      config.FBCurrentVersion,
-			ServerCode:     config.ServerCode,
-			ServerPassword: config.ServerPassword,
-		},
+	var authenticator define.Authenticator
+	if config.variant == _const.Variant_Rental {
+		authenticator = &fb.Authenticator{
+			Identify: &fb.Identify{
+				FBToken:        config.FBMCConfig.FBToken,
+				FBVersion:      config.FBMCConfig.FBCurrentVersion,
+				ServerCode:     config.FBMCConfig.ServerCode,
+				ServerPassword: config.FBMCConfig.ServerPassword,
+			},
+		}
+	} else {
+		authenticator = &inc.Authenticator{Address: config.IncMCConfig.Server}
 	}
 
 	mcShield := shield.NewShield(&config.ShieldConfig)
 	taskIO := task.NewTaskIO(mcShield.IO)
+
 	mcShield.LoginTokenGenerator = authenticator.GenerateToken
 	mcShield.PacketInterceptor = authenticator.Intercept
+
+	mcShield.Variant = config.variant
+	if mcShield.Variant == _const.Variant_Inc {
+		mcShield.LoginClientData = config.IncMCConfig.LoginClientData
+		mcShield.LoginIdentityData = config.IncMCConfig.LoginIdentityData
+	}
 
 	closeFn := loadPlugins(taskIO, &config.pluginsConfig)
 

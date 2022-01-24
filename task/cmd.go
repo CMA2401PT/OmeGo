@@ -20,7 +20,6 @@ func (io *TaskIO) GenCMD(command string) (*packet.CommandRequest, uuid.UUID) {
 		CommandLine:   command,
 		CommandOrigin: origin,
 		Internal:      false,
-		UnLimited:     false,
 	}
 	return &cmdRequest, UUID
 }

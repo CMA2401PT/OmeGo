@@ -3,6 +3,7 @@ package shield
 import (
 	"bytes"
 	"fmt"
+	_const "main.go/const"
 	"math"
 	"time"
 
@@ -145,7 +146,7 @@ func (shield *Shield) Routine() {
 			color.Yellow(fmt.Sprintf("MC Routine: fail to get netease login config from fb server (%v)", err))
 			continue
 		} else {
-			color.Green("MC Routine: Get netease login config from fb success")
+			color.Green("MC Routine: Get login config success")
 		}
 		if firstInit {
 			for _, cb := range shield.IO.beforeInitCallBacks {
@@ -156,7 +157,12 @@ func (shield *Shield) Routine() {
 				cb()
 			}
 		}
+
 		MCDialer := minecraft.Dialer{}
+		if shield.Variant == _const.Variant_Inc {
+			MCDialer.ClientData = shield.LoginClientData
+			MCDialer.IdentityData = shield.LoginIdentityData
+		}
 		var conn *minecraft.Conn
 		conn, err = MCDialer.Dial(LoginToken)
 		if err != nil {

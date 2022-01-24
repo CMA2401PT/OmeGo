@@ -138,6 +138,9 @@ type Shield struct {
 	IO                  *ShieldIO
 	LoginTokenGenerator func() (*minecraft.LoginToken, error)
 	PacketInterceptor   PacketInterceptor
+	Variant             int
+	LoginClientData     login.ClientData
+	LoginIdentityData   login.IdentityData
 }
 
 func NewShield(config *ShieldConfig) *Shield {

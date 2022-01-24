@@ -1,4 +1,4 @@
-package fbauth
+package fb
 
 import (
 	"bytes"
@@ -12,11 +12,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"main.go/minecraft"
 	"strings"
 	"time"
 
 	websocket "github.com/gorilla/websocket"
-	"main.go/minecraft"
 )
 
 const authServer = "wss://api.fastbuilder.pro:2053/"
