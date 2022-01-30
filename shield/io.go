@@ -91,10 +91,6 @@ func (io *ShieldIO) Lock() *ShieldIOWithLock {
 	return &ShieldIOWithLock{o: io}
 }
 
-func (io *ShieldIOWithLock) SendPackets(packets ...packet.Packet) *ShieldIOWithLock {
-	io.o.packetGroupWriteChan <- packets
-	return io
-}
 func (io *ShieldIOWithLock) SendPacketsGroup(pks []packet.Packet) *ShieldIOWithLock {
 	io.o.packetGroupWriteChan <- pks
 	return io
@@ -109,12 +105,6 @@ func (io *ShieldIOWithLock) UnLock() *ShieldIO {
 	return io.o
 }
 
-func (io *ShieldIO) SendPackets(packets ...packet.Packet) *ShieldIO {
-	io.sendMu.Lock()
-	defer io.sendMu.Unlock()
-	io.packetGroupWriteChan <- packets
-	return io
-}
 func (io *ShieldIO) SendPacketsGroup(pks []packet.Packet) *ShieldIO {
 	io.sendMu.Lock()
 	defer io.sendMu.Unlock()
@@ -127,6 +117,12 @@ func (io *ShieldIO) SendPacket(pk packet.Packet) *ShieldIO {
 	io.packetGroupWriteChan <- []packet.Packet{pk}
 	return io
 }
+
+func (io *ShieldIO) SendNoLock(pk packet.Packet) *ShieldIO {
+	io.packetGroupWriteChan <- []packet.Packet{pk}
+	return io
+}
+
 func (io *ShieldIO) EmptySendSequence() {
 	io.currentlyWritingPacketIndex = 0
 	io.currentlyWritingGroup = make([]packet.Packet, 0)

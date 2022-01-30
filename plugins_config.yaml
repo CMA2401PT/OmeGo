@@ -11,6 +11,12 @@ plugins:
     file: internal
     configs:
       chat_prefix: '[backend]: '
+  - name: read_chat
+    as: chat_interface
+    file: internal
+    configs:
+      user: "PT24017736"
+      format: "[msg]"
 #  - name: cq_interface
 #    file: internal
 #    configs:
@@ -47,9 +53,16 @@ plugins:
       log_plugin: storage
   - name: fast_builder
     file: internal
-    sources:
-      - plugin: interface
-        reg_name: exec_fb_cmd
-        use: ['get','set','get end','setend','schem','acme','bdump','plot','export','round','circle','sphere','ellipse','ellipsoid','lang','task']
-    log_name: fast_builder_cmds_record
-    log_plugin: storage
+    configs:
+      language: "zh_CN"
+      sources:
+        - plugin: interface
+          reg_name: exec_fb_cmd
+          use: ['get','set','get end','setend','schem','acme','bdump','plot','export','round','circle','sphere','ellipse','ellipsoid','lang','task']
+        - plugin: chat_interface
+          reg_name: exec_fb_cmd
+          use: [ 'get','set','get end','setend','schem','acme','bdump','plot','export','round','circle','sphere','ellipse','ellipsoid','lang','task' ]
+      log_name: fast_builder_cmds_record
+      log_plugin: storage
+      operator: '@a[tag=fb_op]'
+      supervisors: '@a[tag=op]'

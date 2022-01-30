@@ -14,8 +14,7 @@ type StringWriteInterface interface {
 }
 
 type StringReadInterface interface {
-	RegStringInterceptor(name string, intercept func(isJson bool, data string) (bool, string)) int
-	RemoveStringInterceptor(interceptID int)
+	RegStringInterceptor(name string, intercept func(isJson bool, data string) (bool, string)) func()
 }
 
 type InterceptFn func(isJson bool, data string) (bool, string)

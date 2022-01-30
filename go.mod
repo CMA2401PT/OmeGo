@@ -3,12 +3,17 @@ module main.go
 go 1.16
 
 require (
+	github.com/Tnze/go-mc v1.17.1 // indirect
+	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/brentp/intintmap v0.0.0-20190211203843-30dc0ade9af9 // indirect
+	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/fatih/color v1.13.0
 	github.com/go-gl/mathgl v1.0.0
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.4.2
 	github.com/klauspost/compress v1.11.1
+	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.10
 	github.com/muhammadmuzzammil1998/jsonc v0.0.0-20211230184646-baf1f7156737
 	github.com/sandertv/go-raknet v1.10.2

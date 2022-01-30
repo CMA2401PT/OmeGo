@@ -23,10 +23,13 @@ func (a *AskForOP) WaitOP() {
 
 func (a *AskForOP) Inject(taskIO *task.TaskIO, collaborationContext map[string]define.Plugin) define.Plugin {
 	a.taskIO = taskIO
+	//a.taskIO.ShieldIO.AddInitCallBack(func(conn *minecraft.Conn) {
+	//	go a.AskForOP()
+	//})
 	return a
 }
 
-func (a *AskForOP) Routine() {
+func (a *AskForOP) AskForOP() {
 	for {
 		cheatOn := a.taskIO.Status.CmdEnabled()
 		if !cheatOn {
@@ -48,6 +51,11 @@ func (a *AskForOP) Routine() {
 		}
 		time.Sleep(3 * time.Second)
 	}
+}
+
+func (a *AskForOP) Routine() {
+	a.taskIO.WaitInit()
+	a.AskForOP()
 }
 
 func (a *AskForOP) Close() {

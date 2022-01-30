@@ -110,9 +110,9 @@ func (taskIO *TaskIO) onMCSessionTerminate() {
 
 func (cbs *CallBacks) activatePacketCallbacks(pk packet.Packet) {
 	packetCBS, _ := cbs.packetsCBS[pk.ID()]
-	for cbID, cb := range packetCBS.cbs {
+	for _, cb := range packetCBS.cbs {
 		cb(pk)
-		delete(packetCBS.cbs, cbID)
+		//delete(packetCBS.cbs, cbID)
 	}
 }
 

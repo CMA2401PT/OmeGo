@@ -55,7 +55,7 @@ func (u *CliInterface) RegStringSender(name string) func(isJson bool, data strin
 	return fn
 }
 
-func (u *CliInterface) RegStringInterceptor(name string, intercept func(isJson bool, data string) (bool, string)) int {
+func (u *CliInterface) RegStringInterceptor(name string, intercept func(isJson bool, data string) (bool, string)) func() {
 	c := u.stringInterceptorCount + 1
 	if c == 0 {
 		panic("RegStringInterceptors Over Limit!")
@@ -67,22 +67,9 @@ func (u *CliInterface) RegStringInterceptor(name string, intercept func(isJson b
 	//}
 	u.stringInterceptorCount = c
 	u.stringInterceptors[c] = stringInterceptor{name: name, intercept: intercept}
-	return c
-}
-
-func (u *CliInterface) RemoveStringInterceptor(interceptID int) {
-	_, ok := u.stringInterceptors[interceptID]
-	if ok {
-		delete(u.stringInterceptors, interceptID)
+	return func() {
+		delete(u.stringInterceptors, c)
 	}
-}
-
-func (u *CliInterface) RemoveOnCmdFeedBackOnCb(interceptorID int) bool {
-	_, ok := u.stringInterceptors[interceptorID]
-	if ok {
-		delete(u.stringInterceptors, interceptorID)
-	}
-	return ok
 }
 
 func (u *CliInterface) NewString(source string, isJson bool, data string) {

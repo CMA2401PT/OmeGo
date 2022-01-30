@@ -26,15 +26,31 @@ func (io *TaskIO) GenCMD(command string) (*packet.CommandRequest, uuid.UUID) {
 	return &cmdRequest, UUID
 }
 
-func (io *TaskIO) GenSettingCMD(settingsCommand string) *packet.SettingsCommand {
-	return &packet.SettingsCommand{
-		CommandLine:    settingsCommand,
-		SuppressOutput: true,
-	}
-}
-
 func (io *TaskIO) AddOnCMDFeedBackCallback(UUID uuid.UUID, cb func(output *packet.CommandOutput)) {
 	io.cbs.onCmdFeedbackTmpCbS[UUID] = cb
+}
+
+func (io *TaskIOWithLock) SendCmds(cmds ...string) *TaskIOWithLock {
+	pks := make([]packet.Packet, 0)
+	for _, cmd := range cmds {
+		pk, _ := io.origTaskIO.GenCMD(cmd)
+		pks = append(pks, pk)
+	}
+	io.ShieldIOWithLock.SendPacketsGroup(pks)
+	return io
+}
+
+func (io *TaskIOWithLock) SendCmd(cmd string) *TaskIOWithLock {
+	pk, _ := io.origTaskIO.GenCMD(cmd)
+	io.ShieldIOWithLock.SendPacket(pk)
+	return io
+}
+
+func (io *TaskIOWithLock) SendCmdWithFeedBack(cmd string, cb func(respPk *packet.CommandOutput)) *TaskIOWithLock {
+	pk, reqUUID := io.origTaskIO.GenCMD(cmd)
+	io.ShieldIOWithLock.SendPacket(pk)
+	io.origTaskIO.cbs.onCmdFeedbackTmpCbS[reqUUID] = cb
+	return io
 }
 
 func turnOnCMDFB(io *TaskIO, lockedShieldIO *shield.ShieldIOWithLock, do func()) {
@@ -43,7 +59,7 @@ func turnOnCMDFB(io *TaskIO, lockedShieldIO *shield.ShieldIOWithLock, do func())
 		if respPk.OutputMessages[0].Success {
 			do()
 		} else {
-			fmt.Println("Fail to get command feed back, do I have op?")
+			fmt.Println("Fail to set sendcommandfeedback true, do I have op?")
 			time.Sleep(3 * time.Second)
 			turnOnCMDFB(io, lockedShieldIO, do)
 		}
@@ -71,39 +87,13 @@ func (io *TaskIO) Lock() *TaskIOWithLock {
 	return &TaskIOWithLock{origTaskIO: io, beforeSwitchCMDFB: io.Status.CmdFB(), ShieldIOWithLock: io.ShieldIO.Lock()}
 }
 
-func (io *TaskIOWithLock) SendCmds(cmds ...string) *TaskIOWithLock {
-	pks := make([]packet.Packet, 0)
-	for _, cmd := range cmds {
-		pk, _ := io.origTaskIO.GenCMD(cmd)
-		pks = append(pks, pk)
-	}
-	io.ShieldIOWithLock.SendPacketsGroup(pks)
-	return io
-}
-
-func (io *TaskIOWithLock) SendCmd(cmd string) *TaskIOWithLock {
-	pk, _ := io.origTaskIO.GenCMD(cmd)
-	io.ShieldIOWithLock.SendPacket(pk)
-	return io
-}
-
-func (io *TaskIOWithLock) SendCmdWithFeedBack(cmd string, cb func(respPk *packet.CommandOutput)) *TaskIOWithLock {
-	pk, reqUUID := io.origTaskIO.GenCMD(cmd)
-	io.ShieldIOWithLock.SendPacket(pk)
-	io.origTaskIO.cbs.onCmdFeedbackTmpCbS[reqUUID] = cb
-	return io
-}
-
-func (io *TaskIOWithLock) SendSettingCMD(settingsCommand string) *TaskIOWithLock {
-	io.ShieldIOWithLock.SendPacket(io.origTaskIO.GenSettingCMD(settingsCommand))
-	return io
-}
 func (io *TaskIOWithLock) Unlock() *TaskIO {
 	io.ShieldIOWithLock.UnLock()
 	return io.origTaskIO
 }
 
 func (io *TaskIOWithLock) UnlockAndOff() *TaskIO {
+	//fmt.Println("Switch Off")
 	lock := sync.Mutex{}
 	lock.Lock()
 	unlocked := false
@@ -118,6 +108,7 @@ func (io *TaskIOWithLock) UnlockAndOff() *TaskIO {
 		// it seems that something went wrong, but it's ok
 		if !unlocked {
 			go func() {
+				fmt.Println("Fail to set sendcommandfeedback false")
 				for !unlocked {
 					io.SendCmd("gamerule sendcommandfeedback true")
 					io.SendCmd("gamerule sendcommandfeedback false")
@@ -125,11 +116,13 @@ func (io *TaskIOWithLock) UnlockAndOff() *TaskIO {
 				}
 				unlocked = true
 				lock.Unlock()
+				return
 			}()
 
 		}
 	})
 	lock.Lock()
+	unlocked = true
 	io.ShieldIOWithLock.UnLock()
 	return io.origTaskIO
 }
@@ -140,6 +133,8 @@ func (io *TaskIOWithLock) UnlockAndRestore() *TaskIO {
 	}
 	return io.UnlockAndOff()
 }
+
+// NORMAL Block Send
 
 func (io *TaskIO) SendCmds(cmds ...string) *TaskIO {
 	pks := make([]packet.Packet, 0)
@@ -161,11 +156,6 @@ func (io *TaskIO) SendCmdWithFeedBack(cmd string, cb func(respPk *packet.Command
 	pk, reqUUID := io.GenCMD(cmd)
 	io.ShieldIO.SendPacket(pk)
 	io.cbs.onCmdFeedbackTmpCbS[reqUUID] = cb
-	return io
-}
-
-func (io *TaskIO) SendSettingCMD(settingsCommand string) *TaskIO {
-	io.ShieldIO.SendPacket(io.GenSettingCMD(settingsCommand))
 	return io
 }
 
@@ -214,13 +204,19 @@ func (io *TaskIO) SendChat(content string) *TaskIO {
 		Message:          content,
 		XUID:             idd.XUID,
 	}
-	io.ShieldIO.SendPacket(&pk)
+	io.ShieldIO.SendNoLock(&pk)
 	return io
 }
 
 func (io *TaskIO) TalkTo(player string, content string) *TaskIO {
 	cmd, _ := io.GenCMD(fmt.Sprintf(`tellraw %s {"rawtext" : [{"text":"%s"}]}`, player, content))
-	io.ShieldIO.SendPacket(cmd)
+	io.ShieldIO.SendNoLock(cmd)
+	return io
+}
+
+func (io *TaskIO) Title(player string, content string) *TaskIO {
+	cmd, _ := io.GenCMD(fmt.Sprintf(`title %s actionbar %s`, player, content))
+	io.ShieldIO.SendNoLock(cmd)
 	return io
 }
 
@@ -230,7 +226,7 @@ func (io *TaskIO) Say(isJson bool, content string) *TaskIO {
 		io.ShieldIO.SendPacket(cmd)
 	} else {
 		cmd, _ := io.GenCMD(fmt.Sprintf(`tellraw @a {"rawtext" : %s}`, content))
-		io.ShieldIO.SendPacket(cmd)
+		io.ShieldIO.SendNoLock(cmd)
 	}
 	return io
 }
