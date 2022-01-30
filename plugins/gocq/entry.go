@@ -188,7 +188,7 @@ func (cq *GoCQ) New(config []byte) define.Plugin {
 }
 
 func (cq *GoCQ) Close() {
-	cq.Close()
+	cq.conn.Close()
 }
 
 func (cq *GoCQ) Routine() {

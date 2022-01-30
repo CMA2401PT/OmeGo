@@ -42,7 +42,7 @@ func (o *ShowChat) Inject(taskIO *task.TaskIO, collaborationContext map[string]d
 	return o
 }
 
-func (o *ShowChat) onNewTextPacket(p packet.Packet, cbID int) {
+func (o *ShowChat) onNewTextPacket(p packet.Packet) {
 	pk := p.(*packet.Text)
 
 	r := strings.NewReplacer("[src]", strings.TrimSpace(pk.SourceName), "[msg]", strings.TrimSpace(pk.Message), "[type]", strconv.Itoa(int(pk.TextType)))

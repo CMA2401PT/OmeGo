@@ -5,7 +5,9 @@ import (
 	"github.com/google/uuid"
 	"main.go/minecraft/protocol"
 	"main.go/minecraft/protocol/packet"
+	"main.go/shield"
 	"sync"
+	"time"
 )
 
 func (io *TaskIO) GenCMD(command string) (*packet.CommandRequest, uuid.UUID) {
@@ -35,26 +37,38 @@ func (io *TaskIO) AddOnCMDFeedBackCallback(UUID uuid.UUID, cb func(output *packe
 	io.cbs.onCmdFeedbackTmpCbS[UUID] = cb
 }
 
+func turnOnCMDFB(io *TaskIO, lockedShieldIO *shield.ShieldIOWithLock, do func()) {
+	pk, UUID := io.GenCMD("gamerule sendcommandfeedback true")
+	io.AddOnCMDFeedBackCallback(UUID, func(respPk *packet.CommandOutput) {
+		if respPk.OutputMessages[0].Success {
+			do()
+		} else {
+			fmt.Println("Fail to get command feed back, do I have op?")
+			time.Sleep(3 * time.Second)
+			turnOnCMDFB(io, lockedShieldIO, do)
+		}
+	})
+	lockedShieldIO.SendPacket(pk)
+}
+
 func (io *TaskIO) LockCMDAndFBOn() *TaskIOWithLock {
-	beforeSwitchCMDFB := io.sendCommandFeedBack
-	ret := &TaskIOWithLock{origTaskIO: io, beforeSwitchCMDFB: beforeSwitchCMDFB, ShieldIOWithLock: io.ShieldIO.Lock()}
-	// previous packet maybe sendcommandfeedback false and haven't returned yet
+	beforeSwitchCMDFB := io.Status.CmdFB()
+	lockedShieldIO := io.ShieldIO.Lock()
+	ret := &TaskIOWithLock{origTaskIO: io, beforeSwitchCMDFB: beforeSwitchCMDFB, ShieldIOWithLock: lockedShieldIO}
 	if beforeSwitchCMDFB {
 		return ret
 	}
 	lock := sync.Mutex{}
 	lock.Lock()
-	pk, reqUUID := io.GenCMD("gamerule sendcommandfeedback true")
-	ret.ShieldIOWithLock.SendPacket(pk)
-	io.cbs.onCmdFeedbackTmpCbS[reqUUID] = func(respPk *packet.CommandOutput) {
+	turnOnCMDFB(io, lockedShieldIO, func() {
 		lock.Unlock()
-	}
+	})
 	lock.Lock()
 	return ret
 }
 
 func (io *TaskIO) Lock() *TaskIOWithLock {
-	return &TaskIOWithLock{origTaskIO: io, beforeSwitchCMDFB: io.sendCommandFeedBack, ShieldIOWithLock: io.ShieldIO.Lock()}
+	return &TaskIOWithLock{origTaskIO: io, beforeSwitchCMDFB: io.Status.CmdFB(), ShieldIOWithLock: io.ShieldIO.Lock()}
 }
 
 func (io *TaskIOWithLock) SendCmds(cmds ...string) *TaskIOWithLock {
@@ -88,14 +102,33 @@ func (io *TaskIOWithLock) Unlock() *TaskIO {
 	io.ShieldIOWithLock.UnLock()
 	return io.origTaskIO
 }
+
 func (io *TaskIOWithLock) UnlockAndOff() *TaskIO {
 	lock := sync.Mutex{}
 	lock.Lock()
-	io.origTaskIO.AddOnCmdFeedBackOffCb(func(cbID int) {
-		lock.Unlock()
-		io.origTaskIO.RemoveOnCmdFeedBackOffCb(cbID)
+	unlocked := false
+	io.origTaskIO.AddOnCmdFeedBackOffCb(func() {
+		if !unlocked {
+			unlocked = true
+			lock.Unlock()
+		}
 	})
 	io.SendCmd("gamerule sendcommandfeedback false")
+	time.AfterFunc(time.Second, func() {
+		// it seems that something went wrong, but it's ok
+		if !unlocked {
+			go func() {
+				for !unlocked {
+					io.SendCmd("gamerule sendcommandfeedback true")
+					io.SendCmd("gamerule sendcommandfeedback false")
+					time.Sleep(time.Millisecond * 500)
+				}
+				unlocked = true
+				lock.Unlock()
+			}()
+
+		}
+	})
 	lock.Lock()
 	io.ShieldIOWithLock.UnLock()
 	return io.origTaskIO

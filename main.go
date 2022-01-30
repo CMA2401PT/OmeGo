@@ -407,7 +407,9 @@ func loadPlugins(taskIO *task.TaskIO, config *PluginSystemConfig) func() {
 				pi = p().New(pluginConfigBytes)
 			}
 		} else {
-
+			if plugin.File == "" {
+				panic(fmt.Sprintf("loading Plugin: file path of (%v) not specific!", plugin.Name))
+			}
 		}
 		collaborationContext[plugin.As] = pi
 		go pi.Inject(taskIO, collaborationContext).Routine()
