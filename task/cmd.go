@@ -1,11 +1,15 @@
 package task
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
 	"main.go/minecraft/protocol"
 	"main.go/minecraft/protocol/packet"
+	"main.go/shield"
+	"strings"
 	"sync"
+	"time"
 )
 
 func (io *TaskIO) GenCMD(command string) (*packet.CommandRequest, uuid.UUID) {
@@ -24,37 +28,8 @@ func (io *TaskIO) GenCMD(command string) (*packet.CommandRequest, uuid.UUID) {
 	return &cmdRequest, UUID
 }
 
-func (io *TaskIO) GenSettingCMD(settingsCommand string) *packet.SettingsCommand {
-	return &packet.SettingsCommand{
-		CommandLine:    settingsCommand,
-		SuppressOutput: true,
-	}
-}
-
 func (io *TaskIO) AddOnCMDFeedBackCallback(UUID uuid.UUID, cb func(output *packet.CommandOutput)) {
 	io.cbs.onCmdFeedbackTmpCbS[UUID] = cb
-}
-
-func (io *TaskIO) LockCMDAndFBOn() *TaskIOWithLock {
-	beforeSwitchCMDFB := io.sendCommandFeedBack
-	ret := &TaskIOWithLock{origTaskIO: io, beforeSwitchCMDFB: beforeSwitchCMDFB, ShieldIOWithLock: io.ShieldIO.Lock()}
-	// previous packet maybe sendcommandfeedback false and haven't returned yet
-	if beforeSwitchCMDFB {
-		return ret
-	}
-	lock := sync.Mutex{}
-	lock.Lock()
-	pk, reqUUID := io.GenCMD("gamerule sendcommandfeedback true")
-	ret.ShieldIOWithLock.SendPacket(pk)
-	io.cbs.onCmdFeedbackTmpCbS[reqUUID] = func(respPk *packet.CommandOutput) {
-		lock.Unlock()
-	}
-	lock.Lock()
-	return ret
-}
-
-func (io *TaskIO) Lock() *TaskIOWithLock {
-	return &TaskIOWithLock{origTaskIO: io, beforeSwitchCMDFB: io.sendCommandFeedBack, ShieldIOWithLock: io.ShieldIO.Lock()}
 }
 
 func (io *TaskIOWithLock) SendCmds(cmds ...string) *TaskIOWithLock {
@@ -80,23 +55,77 @@ func (io *TaskIOWithLock) SendCmdWithFeedBack(cmd string, cb func(respPk *packet
 	return io
 }
 
-func (io *TaskIOWithLock) SendSettingCMD(settingsCommand string) *TaskIOWithLock {
-	io.ShieldIOWithLock.SendPacket(io.origTaskIO.GenSettingCMD(settingsCommand))
-	return io
+func turnOnCMDFB(io *TaskIO, lockedShieldIO *shield.ShieldIOWithLock, do func()) {
+	pk, UUID := io.GenCMD("gamerule sendcommandfeedback true")
+	io.AddOnCMDFeedBackCallback(UUID, func(respPk *packet.CommandOutput) {
+		if respPk.OutputMessages[0].Success {
+			do()
+		} else {
+			fmt.Println("Fail to set sendcommandfeedback true, do I have op?")
+			time.Sleep(3 * time.Second)
+			turnOnCMDFB(io, lockedShieldIO, do)
+		}
+	})
+	lockedShieldIO.SendPacket(pk)
 }
+
+func (io *TaskIO) LockCMDAndFBOn() *TaskIOWithLock {
+	beforeSwitchCMDFB := io.Status.CmdFB()
+	lockedShieldIO := io.ShieldIO.Lock()
+	ret := &TaskIOWithLock{origTaskIO: io, beforeSwitchCMDFB: beforeSwitchCMDFB, ShieldIOWithLock: lockedShieldIO}
+	if beforeSwitchCMDFB {
+		return ret
+	}
+	lock := sync.Mutex{}
+	lock.Lock()
+	turnOnCMDFB(io, lockedShieldIO, func() {
+		lock.Unlock()
+	})
+	lock.Lock()
+	return ret
+}
+
+func (io *TaskIO) Lock() *TaskIOWithLock {
+	return &TaskIOWithLock{origTaskIO: io, beforeSwitchCMDFB: io.Status.CmdFB(), ShieldIOWithLock: io.ShieldIO.Lock()}
+}
+
 func (io *TaskIOWithLock) Unlock() *TaskIO {
 	io.ShieldIOWithLock.UnLock()
 	return io.origTaskIO
 }
+
 func (io *TaskIOWithLock) UnlockAndOff() *TaskIO {
+	//fmt.Println("Switch Off")
 	lock := sync.Mutex{}
 	lock.Lock()
-	io.origTaskIO.AddOnCmdFeedBackOffCb(func(cbID int) {
-		lock.Unlock()
-		io.origTaskIO.RemoveOnCmdFeedBackOffCb(cbID)
+	unlocked := false
+	io.origTaskIO.AddOnCmdFeedBackOffCb(func() {
+		if !unlocked {
+			unlocked = true
+			lock.Unlock()
+		}
 	})
-	io.SendCmd("gamerule sendcommandfeedback false")
+	io.SendCmdNoLock("gamerule sendcommandfeedback false")
+	time.AfterFunc(time.Second, func() {
+		// it seems that something went wrong, but it's ok
+		if !unlocked {
+			go func() {
+				fmt.Println("Fail to set sendcommandfeedback false")
+				for !unlocked {
+					io.SendCmdNoLock("gamerule sendcommandfeedback true")
+					io.SendCmdNoLock("gamerule sendcommandfeedback false")
+					time.Sleep(time.Millisecond * 500)
+				}
+				unlocked = true
+				lock.Unlock()
+				fmt.Println("Retry set sendcommandfeedback false success")
+				return
+			}()
+
+		}
+	})
 	lock.Lock()
+	unlocked = true
 	io.ShieldIOWithLock.UnLock()
 	return io.origTaskIO
 }
@@ -107,6 +136,8 @@ func (io *TaskIOWithLock) UnlockAndRestore() *TaskIO {
 	}
 	return io.UnlockAndOff()
 }
+
+// NORMAL Block Send
 
 func (io *TaskIO) SendCmds(cmds ...string) *TaskIO {
 	pks := make([]packet.Packet, 0)
@@ -131,9 +162,9 @@ func (io *TaskIO) SendCmdWithFeedBack(cmd string, cb func(respPk *packet.Command
 	return io
 }
 
-func (io *TaskIO) SendSettingCMD(settingsCommand string) *TaskIO {
-	io.ShieldIO.SendPacket(io.GenSettingCMD(settingsCommand))
-	return io
+func (io *TaskIOWithLock) SendCmdNoLock(cmd string) {
+	pk, _ := io.origTaskIO.GenCMD(cmd)
+	io.origTaskIO.ShieldIO.SendNoLock(pk)
 }
 
 // cannot work since 1.17
@@ -181,13 +212,40 @@ func (io *TaskIO) SendChat(content string) *TaskIO {
 		Message:          content,
 		XUID:             idd.XUID,
 	}
-	io.ShieldIO.SendPacket(&pk)
+	io.ShieldIO.SendNoLock(&pk)
 	return io
 }
 
 func (io *TaskIO) TalkTo(player string, content string) *TaskIO {
 	cmd, _ := io.GenCMD(fmt.Sprintf(`tellraw %s {"rawtext" : [{"text":"%s"}]}`, player, content))
-	io.ShieldIO.SendPacket(cmd)
+	io.ShieldIO.SendNoLock(cmd)
+	return io
+}
+
+type TellrawItem struct {
+	Text string `json:"text"`
+}
+
+type TellrawStruct struct {
+	RawText []TellrawItem `json:"rawtext"`
+}
+
+func TitleRequest(player string, lines ...string) string {
+	var items []TellrawItem
+	for _, text := range lines {
+		items = append(items, TellrawItem{Text: strings.Replace(text, "schematic", "sc***atic", -1)})
+	}
+	final := &TellrawStruct{
+		RawText: items,
+	}
+	content, _ := json.Marshal(final)
+	cmd := fmt.Sprintf("titleraw %v actionbar %s", player, content)
+	return cmd
+}
+
+func (io *TaskIO) Title(player string, lines ...string) *TaskIO {
+	cmd, _ := io.GenCMD(TitleRequest(player, lines...))
+	io.ShieldIO.SendNoLock(cmd)
 	return io
 }
 
@@ -197,7 +255,7 @@ func (io *TaskIO) Say(isJson bool, content string) *TaskIO {
 		io.ShieldIO.SendPacket(cmd)
 	} else {
 		cmd, _ := io.GenCMD(fmt.Sprintf(`tellraw @a {"rawtext" : %s}`, content))
-		io.ShieldIO.SendPacket(cmd)
+		io.ShieldIO.SendNoLock(cmd)
 	}
 	return io
 }

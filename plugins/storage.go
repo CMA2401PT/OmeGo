@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
-	"main.go/define"
+	"main.go/plugins/define"
 	"main.go/task"
 	"os"
 	"path"

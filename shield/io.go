@@ -29,10 +29,34 @@ type ShieldIO struct {
 	reInitCallBacks             []func(conn *minecraft.Conn)
 	sessionTerminateCallBacks   []func()
 	sendMu                      sync.Mutex
+	conn                        *minecraft.Conn
+	connInited                  bool
+	connInitWaiter              chan int
 }
 
 type ShieldIOWithLock struct {
 	o *ShieldIO
+}
+
+func (io *ShieldIO) onInit(conn *minecraft.Conn) {
+	io.conn = conn
+	close(io.connInitWaiter)
+	io.connInited = true
+}
+
+func (io *ShieldIO) onTerminate() {
+	io.connInitWaiter = make(chan int)
+	io.connInited = false
+	io.conn = nil
+}
+
+func (io *ShieldIO) GetConn() *minecraft.Conn {
+	if io.connInited {
+		return io.conn
+	} else {
+		<-io.connInitWaiter
+		return io.conn
+	}
 }
 
 func (io *ShieldIO) GameData() minecraft.GameData {
@@ -44,19 +68,22 @@ func (io *ShieldIO) ClientData() login.ClientData {
 	return <-io.connDataResponseChans.ClientDataChain
 }
 
-func (io *ShieldIO) AddNewPacketCallback(cb func(pk packet.Packet)) int {
+func (io *ShieldIO) AddNewPacketCallback(cb func(pk packet.Packet)) (func(), error) {
 	io.newPacketCBCount += 1
-	io.newPacketCallbacks[io.newPacketCBCount] = cb
-	return io.newPacketCBCount
-}
-func (io *ShieldIO) RemovePacketCallback(id int) error {
-	_, ok := io.newPacketCallbacks[id]
-	if ok {
-		delete(io.newPacketCallbacks, id)
-		return nil
-	} else {
-		return fmt.Errorf("do not have such new packet callback ID (%v) to remove", id)
+	c := io.newPacketCBCount
+	if c == 0 {
+		return nil, fmt.Errorf("number of packet callback fn over limit")
 	}
+	io.newPacketCallbacks[c] = cb
+	removed := false
+	removeFn := func() {
+		if removed {
+			return
+		}
+		removed = true
+		delete(io.newPacketCallbacks, c)
+	}
+	return removeFn, nil
 }
 
 func (io *ShieldIO) Lock() *ShieldIOWithLock {
@@ -64,10 +91,6 @@ func (io *ShieldIO) Lock() *ShieldIOWithLock {
 	return &ShieldIOWithLock{o: io}
 }
 
-func (io *ShieldIOWithLock) SendPackets(packets ...packet.Packet) *ShieldIOWithLock {
-	io.o.packetGroupWriteChan <- packets
-	return io
-}
 func (io *ShieldIOWithLock) SendPacketsGroup(pks []packet.Packet) *ShieldIOWithLock {
 	io.o.packetGroupWriteChan <- pks
 	return io
@@ -82,12 +105,6 @@ func (io *ShieldIOWithLock) UnLock() *ShieldIO {
 	return io.o
 }
 
-func (io *ShieldIO) SendPackets(packets ...packet.Packet) *ShieldIO {
-	io.sendMu.Lock()
-	defer io.sendMu.Unlock()
-	io.packetGroupWriteChan <- packets
-	return io
-}
 func (io *ShieldIO) SendPacketsGroup(pks []packet.Packet) *ShieldIO {
 	io.sendMu.Lock()
 	defer io.sendMu.Unlock()
@@ -100,6 +117,12 @@ func (io *ShieldIO) SendPacket(pk packet.Packet) *ShieldIO {
 	io.packetGroupWriteChan <- []packet.Packet{pk}
 	return io
 }
+
+func (io *ShieldIO) SendNoLock(pk packet.Packet) *ShieldIO {
+	io.packetGroupWriteChan <- []packet.Packet{pk}
+	return io
+}
+
 func (io *ShieldIO) EmptySendSequence() {
 	io.currentlyWritingPacketIndex = 0
 	io.currentlyWritingGroup = make([]packet.Packet, 0)
@@ -173,10 +196,14 @@ func NewShield(config *ShieldConfig) *Shield {
 
 			sessionTerminateCallBacks: make([]func(), 0),
 			sendMu:                    sync.Mutex{},
+			connInited:                false,
+			connInitWaiter:            make(chan int),
 		},
 		LoginTokenGenerator: func() (*minecraft.LoginToken, error) { return &minecraft.LoginToken{}, nil },
 		PacketInterceptor:   func(conn *minecraft.Conn, pk packet.Packet) (packet.Packet, error) { return pk, nil },
 	}
 
+	shield.IO.AddInitCallBack(shield.IO.onInit)
+	shield.IO.AddSessionTerminateCallBack(shield.IO.onTerminate)
 	return shield
 }

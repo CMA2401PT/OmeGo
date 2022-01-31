@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"log"
-	"main.go/define"
+	"main.go/plugins/define"
 	"main.go/task"
 	"net/http"
 	"net/url"
@@ -188,7 +188,7 @@ func (cq *GoCQ) New(config []byte) define.Plugin {
 }
 
 func (cq *GoCQ) Close() {
-	cq.Close()
+	cq.conn.Close()
 }
 
 func (cq *GoCQ) Routine() {

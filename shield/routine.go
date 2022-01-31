@@ -43,15 +43,20 @@ func sendInitPackets(conn *minecraft.Conn) error {
 }
 
 type SessionStatus struct {
-	connClosed bool
+	connClosed    bool
+	connCloseLock chan int
 }
 
 func handleMCSession(conn *minecraft.Conn, io *ShieldIO, interceptor PacketInterceptor) error {
-	sessionStatus := &SessionStatus{connClosed: false}
-	defer func() {
-		sessionStatus.connClosed = true
-		conn.Close()
-	}()
+	sessionStatus := &SessionStatus{connClosed: false, connCloseLock: make(chan int)}
+	closeSession := func() {
+		if !sessionStatus.connClosed {
+			sessionStatus.connClosed = true
+			conn.Close()
+			close(sessionStatus.connCloseLock)
+		}
+	}
+	defer closeSession()
 	err := sendInitPackets(conn)
 	if err != nil {
 		return err
@@ -60,14 +65,19 @@ func handleMCSession(conn *minecraft.Conn, io *ShieldIO, interceptor PacketInter
 		fmt.Println("MC Session: Write Shield Routine Created")
 		for {
 			if len(io.currentlyWritingGroup) == io.currentlyWritingPacketIndex {
-				io.currentlyWritingGroup = <-io.packetGroupWriteChan
-				io.currentlyWritingPacketIndex = 0
+				select {
+				case io.currentlyWritingGroup = <-io.packetGroupWriteChan:
+					io.currentlyWritingPacketIndex = 0
+				case <-sessionStatus.connCloseLock:
+					fmt.Println("MC Session (Write Shield Routine): closed from other routine")
+					return
+				}
 			}
 			err := conn.WritePacket(io.currentlyWritingGroup[io.currentlyWritingPacketIndex])
 			if err != nil {
-				fmt.Printf("MC Session: An error (%v) occour when write, anyway, I'll close the connection\n", err)
-				_ = conn.Close()
-				break
+				fmt.Printf("MC Session (Write Shield Routine): An error (%v) occour when write, anyway, I'll close the connection\n", err)
+				closeSession()
+				return
 			} else {
 				io.currentlyWritingPacketIndex++
 			}
@@ -76,19 +86,19 @@ func handleMCSession(conn *minecraft.Conn, io *ShieldIO, interceptor PacketInter
 	go func() {
 		fmt.Println("MC Session: Data Request Shield Routine Created")
 		for !sessionStatus.connClosed {
-			requestID := <-io.connDataRequestFlag
-			if sessionStatus.connClosed {
-				io.connDataRequestFlag <- requestID
-				break
-			}
-
-			switch requestID {
-			case 0:
-				io.connDataResponseChans.GameDataChain <- conn.GameData()
-				break
-			case 1:
-				io.connDataResponseChans.ClientDataChain <- conn.ClientData()
-				break
+			select {
+			case requestID := <-io.connDataRequestFlag:
+				switch requestID {
+				case 0:
+					io.connDataResponseChans.GameDataChain <- conn.GameData()
+					break
+				case 1:
+					io.connDataResponseChans.ClientDataChain <- conn.ClientData()
+					break
+				}
+			case <-sessionStatus.connCloseLock:
+				fmt.Println("MC Session (Request Shield Routine): closed from other routine")
+				return
 			}
 		}
 	}()
@@ -97,11 +107,13 @@ func handleMCSession(conn *minecraft.Conn, io *ShieldIO, interceptor PacketInter
 		generalPacket, err := conn.ReadPacket()
 		if err != nil {
 			fmt.Printf("MC Session: An error (%v) occour when read from MC, connection will be closed\n", err)
+			closeSession()
 			return err
 		}
 		allowedPacket, err := interceptor(conn, generalPacket)
 		if err != nil {
 			fmt.Printf("MC Session: An error (%v) occour when intercept packet readed from MC, connection will be closed\n", err)
+			closeSession()
 			return err
 		}
 		if allowedPacket == nil {

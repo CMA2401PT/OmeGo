@@ -3,8 +3,8 @@ package plugins
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
-	"main.go/define"
 	"main.go/minecraft/protocol/packet"
+	"main.go/plugins/define"
 	"main.go/task"
 	"strings"
 )

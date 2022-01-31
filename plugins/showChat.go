@@ -2,8 +2,8 @@ package plugins
 
 import (
 	"gopkg.in/yaml.v3"
-	"main.go/define"
 	"main.go/minecraft/protocol/packet"
+	"main.go/plugins/define"
 	"main.go/task"
 	"strconv"
 	"strings"
@@ -16,15 +16,19 @@ type Dst struct {
 }
 
 type ShowChat struct {
-	taskIO        *task.TaskIO
-	DstInterfaces []Dst  `yaml:"dests"`
-	Hint          string `yaml:"hint"`
-	sends         []func(isJson bool, data string)
+	taskIO                 *task.TaskIO
+	DstInterfaces          []Dst  `yaml:"dests"`
+	Hint                   string `yaml:"hint"`
+	sends                  []func(isJson bool, data string)
+	stringInterceptorCount int
+	stringInterceptors     map[int]stringInterceptor
 }
 
 func (o *ShowChat) New(config []byte) define.Plugin {
 	o.DstInterfaces = make([]Dst, 0)
 	err := yaml.Unmarshal(config, o)
+	o.stringInterceptorCount = 0
+	o.stringInterceptors = make(map[int]stringInterceptor)
 	if err != nil {
 		panic(err)
 	}
@@ -42,9 +46,23 @@ func (o *ShowChat) Inject(taskIO *task.TaskIO, collaborationContext map[string]d
 	return o
 }
 
-func (o *ShowChat) onNewTextPacket(p packet.Packet, cbID int) {
-	pk := p.(*packet.Text)
+func (o *ShowChat) RegStringInterceptor(name string, intercept func(isJson bool, data string) (bool, string)) int {
+	c := o.stringInterceptorCount + 1
+	if c == 0 {
+		panic("RegStringInterceptors Over Limit!")
+	}
+	//_,hasK:=u.stringInterceptors[c]
+	//for hasK{
+	//	c+=1
+	//	_,hasK=u.stringInterceptors[c]
+	//}
+	o.stringInterceptorCount = c
+	o.stringInterceptors[c] = stringInterceptor{name: name, intercept: intercept}
+	return c
+}
 
+func (o *ShowChat) onNewTextPacket(p packet.Packet) {
+	pk := p.(*packet.Text)
 	r := strings.NewReplacer("[src]", strings.TrimSpace(pk.SourceName), "[msg]", strings.TrimSpace(pk.Message), "[type]", strconv.Itoa(int(pk.TextType)))
 	for i, send := range o.sends {
 		filter := o.DstInterfaces[i].Filter
