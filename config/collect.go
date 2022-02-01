@@ -9,7 +9,7 @@ import (
 	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 	"io"
-	_const "main.go/const"
+	"main.go/minecraft/alter"
 	"main.go/minecraft/protocol/login"
 	"main.go/shield"
 	"net/http"
@@ -23,7 +23,7 @@ func CollectInfo() *StartConfig {
 	flag.Parse()
 	args := flag.Args()
 	config := StartConfig{
-		variant: _const.VARIANT,
+		variant: alter.VARIANT,
 		FBMCConfig: FastBuilderMCConfig{
 			MaskTermPassword: true,
 			UseFBVersion:     "use_current",
@@ -75,13 +75,13 @@ func CollectInfo() *StartConfig {
 		}
 	}
 
-	if config.variant == _const.Variant_Rental {
+	if config.variant == alter.Variant_Rental {
 		fmt.Println("Rental Server Version: FB Config is required")
 	} else {
 		fmt.Println("International Bedrock Server version")
 	}
 
-	if config.variant == _const.Variant_Rental {
+	if config.variant == alter.Variant_Rental {
 		// FB account
 		if config.FBMCConfig.FBToken == "" && (config.FBMCConfig.FBUserName == "" || config.FBMCConfig.FBPassword == "") {
 			// 询问用户名和密码

@@ -1,4 +1,4 @@
-package _const
+package alter
 
 const (
 	Variant_Rental = iota

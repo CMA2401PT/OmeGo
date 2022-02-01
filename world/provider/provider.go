@@ -26,6 +26,7 @@ type Provider struct {
 	d                     data
 	hasFile               bool
 	loadChunkInterceptors []LoadChunkInterceptorFn
+	newFileCachedChunk    map[world.ChunkPos]bool
 }
 
 // chunkVersion is the current version of chunks.
@@ -35,7 +36,7 @@ const chunkVersion = 19
 // at the path, New will parse its data and initialise the world with it. If the data cannot be parsed, an
 // error is returned.
 func New() *Provider {
-	return &Provider{hasFile: false, loadChunkInterceptors: make([]LoadChunkInterceptorFn, 0)}
+	return &Provider{hasFile: false, loadChunkInterceptors: make([]LoadChunkInterceptorFn, 0), newFileCachedChunk: make(map[world.ChunkPos]bool)}
 }
 func (p *Provider) AddInterceptor(inteceptor LoadChunkInterceptorFn) {
 	p.loadChunkInterceptors = append(p.loadChunkInterceptors, inteceptor)
@@ -127,15 +128,15 @@ func (p *Provider) SaveSettings(s world.Settings) {
 	p.SaveDifficulty(s.Difficulty)
 }
 
-// LoadChunk loads a chunk at the position passed from the leveldb database. If it doesn't exist, exists is
-// false. If an error is returned, exists is always assumed to be true.
-func (p *Provider) LoadChunk(position world.ChunkPos) (c *chunk.Chunk, exists bool, err error) {
-	for _, interceptor := range p.loadChunkInterceptors {
-		c, e, r := interceptor(position)
-		if e {
-			return c, e, r
-		}
+func (p *Provider) ChunkCached(position world.ChunkPos) bool {
+	isSaved, hasK := p.newFileCachedChunk[position]
+	if hasK && isSaved {
+		return true
 	}
+	return false
+}
+
+func (p *Provider) LoadFromFile(position world.ChunkPos) (c *chunk.Chunk, exists bool, err error) {
 	data := chunk.SerialisedData{}
 	key := index(position)
 
@@ -178,8 +179,29 @@ func (p *Provider) LoadChunk(position world.ChunkPos) (c *chunk.Chunk, exists bo
 	return c, true, err
 }
 
+// LoadChunk loads a chunk at the position passed from the leveldb database. If it doesn't exist, exists is
+// false. If an error is returned, exists is always assumed to be true.
+func (p *Provider) LoadChunk(position world.ChunkPos) (c *chunk.Chunk, exists bool, err error) {
+	if p.ChunkCached(position) {
+		fmt.Println("Load Chunk From File Cache...")
+		return p.LoadFromFile(position)
+	}
+	for _, interceptor := range p.loadChunkInterceptors {
+		c, e, r := interceptor(position)
+		if e {
+			return c, e, r
+		}
+	}
+	return p.LoadFromFile(position)
+}
+
 // SaveChunk saves a chunk at the position passed to the leveldb database. Its version is written as the
 // version in the chunkVersion constant.
+func (p *Provider) CacheChunk(position world.ChunkPos, c *chunk.Chunk) error {
+	p.newFileCachedChunk[position] = true
+	return p.SaveChunk(position, c)
+}
+
 func (p *Provider) SaveChunk(position world.ChunkPos, c *chunk.Chunk) error {
 	if !p.hasFile {
 		return nil

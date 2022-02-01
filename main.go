@@ -8,7 +8,7 @@ import (
 	"main.go/auth/fb"
 	"main.go/auth/inc"
 	config "main.go/config"
-	_const "main.go/const"
+	"main.go/minecraft/alter"
 	"main.go/plugins"
 	define "main.go/plugins/define"
 	"main.go/shield"
@@ -44,7 +44,7 @@ func updateFBConfig(cfg config.FastBuilderMCConfig) config.FastBuilderMCConfig {
 func main() {
 	color.Blue("Collecting Infomation...")
 	cfg := config.CollectInfo()
-	if cfg.GetVariant() == _const.Variant_Rental {
+	if cfg.GetVariant() == alter.Variant_Rental {
 		cfg.FBMCConfig = updateFBConfig(cfg.FBMCConfig)
 	}
 	config.WriteBackConfig(cfg)
@@ -55,7 +55,7 @@ func main() {
 
 	color.Blue("Starting Shield...")
 	var authenticator auth_define.Authenticator
-	if cfg.GetVariant() == _const.Variant_Rental {
+	if cfg.GetVariant() == alter.Variant_Rental {
 		authenticator = &fb.Authenticator{
 			Identify: &fb.Identify{
 				FBToken:        cfg.FBMCConfig.FBToken,
@@ -76,7 +76,7 @@ func main() {
 	mcShield.PacketInterceptor = authenticator.Intercept
 
 	mcShield.Variant = cfg.GetVariant()
-	if mcShield.Variant == _const.Variant_Inc {
+	if mcShield.Variant == alter.Variant_Inc {
 		mcShield.LoginClientData = cfg.IncMCConfig.LoginClientData
 		mcShield.LoginIdentityData = cfg.IncMCConfig.LoginIdentityData
 	}

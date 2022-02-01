@@ -3,7 +3,7 @@ package shield
 import (
 	"bytes"
 	"fmt"
-	_const "main.go/const"
+	"main.go/minecraft/alter"
 	"math"
 	"time"
 
@@ -171,7 +171,7 @@ func (shield *Shield) Routine() {
 		}
 
 		MCDialer := minecraft.Dialer{}
-		if shield.Variant == _const.Variant_Inc {
+		if shield.Variant == alter.Variant_Inc {
 			MCDialer.ClientData = shield.LoginClientData
 			MCDialer.IdentityData = shield.LoginIdentityData
 		}

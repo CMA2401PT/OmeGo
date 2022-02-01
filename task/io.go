@@ -37,7 +37,7 @@ func NewTaskIO(shieldIO *shield.ShieldIO) *TaskIO {
 		requestID:     "96045347-a6a3-4114-94c0-1bc4cc561694",
 		initLock:      make(chan int),
 		packetTypes:   make(map[uint32]packet.Packet),
-		doCacheChunks: true,
+		doCacheChunks: false,
 		//cmdSendMu:           sync.Mutex{},
 	}
 	shieldIO.AddInitCallBack(taskIO.onMCInit)

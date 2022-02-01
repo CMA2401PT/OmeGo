@@ -89,6 +89,13 @@ func (s *HoldedStatus) CmdFB() bool {
 	return s.cmdFB
 }
 
+//type ChunkHolder struct {
+//	chunkCache       map[world.ChunkPos]*packet.LevelChunk
+//	chunkLock        sync.Mutex
+//	chunkCacheRange  [4]int
+//	cacheRangeSetted bool
+//}
+
 func (s *HoldedStatus) AccessChunkCache(fn func(map[world.ChunkPos]*packet.LevelChunk)) {
 	s.chunkLock.Lock()
 	defer s.chunkLock.Unlock()
@@ -98,4 +105,9 @@ func (s *HoldedStatus) AddChunk(p *packet.LevelChunk) {
 	s.chunkLock.Lock()
 	defer s.chunkLock.Unlock()
 	s.chunkCache[world.ChunkPos{p.ChunkX, p.ChunkZ}] = p
+}
+func (s *HoldedStatus) ClearAllChunk() {
+	s.chunkLock.Lock()
+	defer s.chunkLock.Unlock()
+	s.chunkCache = make(map[world.ChunkPos]*packet.LevelChunk)
 }
