@@ -32,7 +32,7 @@ type FastBuilder struct {
 
 func (fb *FastBuilder) New(config []byte) define.Plugin {
 	fb.Sources = make([]Source, 0)
-	fb.LogName = ""
+	fb.LogName = "fastbuilder"
 	fb.LogPlugin = "storage"
 	err := yaml.Unmarshal(config, fb)
 	if err != nil {
@@ -53,6 +53,7 @@ func (fb *FastBuilder) onNewText(isJson bool, use []string, data string) (bool, 
 	for _, prefix := range use {
 		if strings.HasPrefix(data, prefix) {
 			//catch
+			fb.log(isJson, data)
 			function.Process(data)
 			return true, ""
 		}

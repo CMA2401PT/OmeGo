@@ -13,7 +13,7 @@ import (
 	define "main.go/plugins/define"
 	"main.go/shield"
 	"main.go/task"
-	WordInit "main.go/world/init"
+	WordInit "main.go/world/define"
 	"os"
 	"os/signal"
 )

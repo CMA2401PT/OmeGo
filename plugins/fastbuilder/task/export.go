@@ -5,6 +5,7 @@ import (
 	"main.go/dragonfly/server/block/cube"
 	"main.go/dragonfly/server/world"
 	"main.go/dragonfly/server/world/chunk"
+	"main.go/minecraft/alter"
 	"main.go/minecraft/protocol/packet"
 	"main.go/plugins/fastbuilder/bdump"
 	"main.go/plugins/fastbuilder/bridge"
@@ -41,6 +42,7 @@ func checkChunkInCache(pos world.ChunkPos) (c *chunk.Chunk, exists bool, err err
 	hascacheitem := false
 	bridge.BypassedTaskIO.Status.AccessChunkCache(func(m map[world.ChunkPos]*packet.LevelChunk) {
 		cacheitem, hascacheitem = m[pos]
+		delete(m, pos)
 	})
 	if hascacheitem {
 		c, err := chunk.NetworkDecode(world_provider.AirRuntimeId, cacheitem.RawPayload, int(cacheitem.SubChunkCount))
@@ -76,27 +78,33 @@ func GetActiveChunkInterceptor() (func(), provider.LoadChunkInterceptorFn, error
 		fmt.Printf("Activate Require Chunk @ (%v,%v)\n", position.X(), position.Z())
 		bridge.BypassedTaskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", position.X()*16, position.Z()*16))
 		time.Sleep(time.Second * 1)
+		retryTime := 0
 		for {
+			//fmt.Println("Check Chunk Cache")
 			c, e, r := checkChunkInCache(position)
 			if e {
 				return c, e, r
 			}
 			select {
 			case <-waitLock:
+				//fmt.Printf("New Chunk Arrival")
 			case <-time.After(time.Second):
-				fmt.Printf("Wait Time out")
+
+				retryTime += 1
+				if retryTime > 16 {
+					retryTime = 16
+				}
+				fmt.Printf("Wait Time out (%v)\n", retryTime)
 				if !isWaiting {
 					waitLock = make(chan int)
 					isWaiting = true
 				}
-				//fmt.Printf("Retry Require Chunk @ (%v,%v)\n", position.X(), position.Z())
-				//bridge.BypassedTaskIO.SendCmdWithFeedBack(fmt.Sprintf("tp @s %d 127 %d", position.X()*16+1000, position.Z()*16+1000), func(respPk *packet.CommandOutput) {
-				//	fmt.Println()
-				//})
+				fmt.Printf("Retry Require Chunk @ (%v,%v)\n", position.X(), position.Z())
+				bridge.BypassedTaskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", position.X()*16+10000, position.Z()*16+10000))
+				time.Sleep(time.Duration(retryTime) * 500 * time.Millisecond)
+				bridge.BypassedTaskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", position.X()*16, position.Z()*16))
+				time.Sleep(time.Duration(retryTime) * 500 * time.Millisecond)
 			}
-			//
-			//time.Sleep(2 * time.Second)
-			//bridge.BypassedTaskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", position.X()*16, position.Z()*16))
 
 		}
 
@@ -127,6 +135,7 @@ func CreateExportTask(commandLine string) *Task {
 		endPos.Z = beginPos.Z
 		beginPos.Z = temp
 	}
+	bridge.BypassedTaskIO.ResumeCacheChunks()
 	tmpWorld := world.New(&world_logger.StubLogger{}, 32)
 	//bridge.SendCommandWithCB()
 	worldProvider := provider.New()
@@ -178,7 +187,7 @@ func CreateExportTask(commandLine string) *Task {
 						if block == "command_block" {
 							mode = packet.CommandBlockImpulse
 						} else if block == "repeating_command_block" {
-							mode = packet.CommandBlockRepeat
+							mode = alter.RepeatCommandBlock
 						} else if block == "chain_command_block" {
 							mode = packet.CommandBlockChain
 						}
@@ -242,9 +251,10 @@ func CreateExportTask(commandLine string) *Task {
 				}
 			}
 		}
-		tmpWorld.Close()
 		destroyFN()
 		blocks = blocks[:counter]
+		bridge.BypassedTaskIO.StopCacheChunks()
+		bridge.BypassedTaskIO.Status.ClearAllChunk()
 		runtime.GC()
 		out := bdump.BDump{
 			Blocks: blocks,

@@ -1,4 +1,4 @@
-package mcdb
+package provider
 
 // data holds a collection of data that specify a range of settings of the world. These settings usually
 // alter the way that players interact with the world.

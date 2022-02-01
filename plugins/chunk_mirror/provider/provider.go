@@ -1,17 +1,17 @@
-package mcdb
+package provider
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/df-mc/goleveldb/leveldb"
+	"github.com/df-mc/goleveldb/leveldb/opt"
+	"io/ioutil"
 	"main.go/dragonfly/server/block/cube"
 	"main.go/dragonfly/server/world"
 	"main.go/dragonfly/server/world/chunk"
-	"main.go/goleveldb/leveldb"
-	"main.go/goleveldb/leveldb/opt"
 	"main.go/minecraft/nbt"
 	"main.go/minecraft/protocol"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -66,9 +66,9 @@ func New(dir string) (*Provider, error) {
 
 // initDefaultLevelDat initialises a default level.dat file.
 func (p *Provider) initDefaultLevelDat() {
-	p.d.DoDayLightCycle = true
+	p.d.DoDayLightCycle = false
 	p.d.BaseGameVersion = protocol.CurrentVersion
-	p.d.LevelName = "World"
+	p.d.LevelName = "MirrorWorld"
 	p.d.GameType = 1
 	p.d.StorageVersion = 8
 	p.d.Generator = 1

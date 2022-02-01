@@ -151,7 +151,7 @@ func (taskIO *TaskIO) newPacketFn(pk packet.Packet) {
 	case *packet.LevelChunk:
 		if taskIO.doCacheChunks {
 			//fmt.Printf("New Chunk Arrival @ (%d,%d)\n", p.ChunkX, p.ChunkZ)
-			taskIO.Status.AddChunk(p)
+			//taskIO.Status.AddChunk(p)
 		}
 	}
 	taskIO.cbs.activatePacketCallbacks(pk)

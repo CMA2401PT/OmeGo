@@ -1,8 +1,10 @@
-package init
+package define
 
 import (
 	"main.go/dragonfly/server/world"
 )
+
+var AirRuntimeId uint32 = 134
 
 func InitRuntimeIds() {
 	world.RegisterBlockState("minecraft:acacia_button", 0)

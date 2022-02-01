@@ -15,22 +15,27 @@ var StateToRuntimeID func(name string, properties map[string]interface{}) (runti
 // The sub chunk count passed must be that found in the LevelChunk packet.
 //noinspection GoUnusedExportedFunction
 func NetworkDecode(air uint32, data []byte, subChunkCount int) (*Chunk, error) {
+	//fmt.Printf("init decode\n")
 	var (
 		c   = New(air)
 		buf = bytes.NewBuffer(data)
 		err error
 	)
+	//fmt.Printf("decode sub chunk")
 	for y := 0; y < subChunkCount; y++ {
+		fmt.Printf(" %d", y)
 		c.sub[y], err = decodeSubChunk(buf, air, NetworkEncoding)
 		if err != nil {
 			return nil, err
 		}
 	}
+	//fmt.Printf(" done\n")
+	//fmt.Printf("read biomes")
 	if _, err := buf.Read(c.biomes[:]); err != nil {
 		return nil, fmt.Errorf("error reading biomes: %w", err)
 	}
 	_, _ = buf.ReadByte()
-
+	//fmt.Printf("decode nbt\n")
 	dec := nbt.NewDecoder(buf)
 	for buf.Len() != 0 {
 		var m map[string]interface{}
@@ -39,6 +44,7 @@ func NetworkDecode(air uint32, data []byte, subChunkCount int) (*Chunk, error) {
 		}
 		c.SetBlockNBT(cube.Pos{int(m["x"].(int32)), int(m["y"].(int32)), int(m["z"].(int32))}, m)
 	}
+	//fmt.Printf("nbt decode done\n")
 	return c, nil
 }
 
@@ -96,7 +102,6 @@ func decodeSubChunk(buf *bytes.Buffer, air uint32, e Encoding) (*SubChunk, error
 			return nil, fmt.Errorf("error reading storage count: %w", err)
 		}
 		sub.storages = make([]*BlockStorage, storageCount)
-
 		for i := byte(0); i < storageCount; i++ {
 			sub.storages[i], err = decodeBlockStorage(buf, e)
 			if err != nil {

@@ -34,7 +34,7 @@ type (
 	SerialisedData struct {
 		// sub holds the data of the serialised sub chunks in a chunk. Sub chunks that are empty or that otherwise
 		// don't exist are represented as an empty slice (or technically, nil).
-		SubChunks [16][]byte
+		SubChunks [24][]byte
 		// Data2D is the 2D data of the chunk, which is composed of the biome IDs (256 bytes) and optionally the
 		// height map of the chunk.
 		Data2D []byte

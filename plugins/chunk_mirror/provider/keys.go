@@ -1,4 +1,4 @@
-package mcdb
+package provider
 
 //lint:file-ignore U1000 Unused unexported constants are present for future code using these.
 

@@ -3,30 +3,28 @@ module main.go
 go 1.16
 
 require (
-	github.com/Tnze/go-mc v1.17.1 // indirect
-	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/Tnze/go-mc v1.17.0
+	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/brentp/intintmap v0.0.0-20190211203843-30dc0ade9af9 // indirect
 	github.com/df-mc/goleveldb v1.1.9 // indirect
-	github.com/disintegration/imaging v1.6.2 // indirect
+	github.com/disintegration/imaging v1.6.2
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-gl/mathgl v1.0.0
-	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.4.2
 	github.com/klauspost/compress v1.13.6
-	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
-	github.com/mattn/go-sqlite3 v1.14.10 // indirect
-	github.com/muhammadmuzzammil1998/jsonc v0.0.0-20211230184646-baf1f7156737
-	github.com/pterm/pterm v0.12.34 // indirect
+	github.com/lucasb-eyer/go-colorful v1.2.0
+	github.com/mattn/go-sqlite3 v1.14.11 // indirect
+	github.com/muhammadmuzzammil1998/jsonc v0.0.0-20211230184646-baf1f7156737 // indirect
+	github.com/pterm/pterm v0.12.29
+	github.com/robertkrimen/otto v0.0.0-20210614181706-373ff5438452 // indirect
 	github.com/sandertv/go-raknet v1.9.1
-	github.com/stretchr/testify v1.7.0 // indirect
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
-	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
-	golang.org/x/net v0.0.0-20220107192237-5cfca573fb4d
-	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/net v0.0.0-20220107192237-5cfca573fb4d // indirect
+	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
 	golang.org/x/text v0.3.7
-	gopkg.in/square/go-jose.v2 v2.6.0
+	gopkg.in/sourcemap.v1 v1.0.5 // indirect
+	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

@@ -66,3 +66,8 @@ plugins:
       log_plugin: storage
       operator: '@a[tag=fb_op]'
       supervisors: '@a[tag=op]'
+  - name: chunk_mirror
+    file: internal
+    configs:
+      world_dir: "data/MirrorChunk"
+      expired_time: "2022-02-01 22:50:54"
