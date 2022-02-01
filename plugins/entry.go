@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"main.go/plugins/chunk_mirror"
 	"main.go/plugins/define"
 	"main.go/plugins/fastbuilder"
 	cqchat "main.go/plugins/gocq"
@@ -22,6 +23,7 @@ func Pool() map[string]func() define.Plugin {
 		pool["send_cmd_line"] = func() define.Plugin { return &SendCmdLine{} }
 		pool["cq_interface"] = func() define.Plugin { return &cqchat.GoCQ{} }
 		pool["fast_builder"] = func() define.Plugin { return &fastbuilder.FastBuilder{} }
+		pool["chunk_mirror"] = func() define.Plugin { return &chunk_mirror.ChunkMirror{} }
 
 		isInit = true
 	}

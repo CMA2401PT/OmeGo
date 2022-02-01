@@ -7,6 +7,7 @@ import (
 )
 
 func Tellraw(msg string) {
+	fmt.Println(msg)
 	BypassedTaskIO.TalkTo(Supervisors, msg)
 }
 
