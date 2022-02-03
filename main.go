@@ -101,7 +101,6 @@ func main() {
 
 func initDragonFlyServer(task *task.TaskIO, config *config.DragonFlyServerConfig) func() {
 	world_blocks_define.InitRuntimeIds()
-	world_blocks_define.InitRichBlocks()
 	return func() {}
 }
 
