@@ -17,7 +17,7 @@ type Authenticator struct {
 }
 
 func responsePyRPC(conn *minecraft.Conn, pk *packet.PyRpc, client *Client) error {
-	fmt.Printf("Authenticator-Intercept: Response netease PyRPC\n")
+	//fmt.Printf("Authenticator-Intercept: Response netease PyRPC\n")
 	if strings.Contains(string(pk.Content), "GetLoadingTime") {
 		//fmt.Printf("GetLoadingTime!!\n")
 		uid := conn.IdentityData().Uid

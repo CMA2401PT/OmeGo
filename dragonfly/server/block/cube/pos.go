@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	MaxY = 320
+	MaxY = 319
 	MinY = 0
 )
 

@@ -15,6 +15,14 @@ const (
 	CurrentBlockVersion int32 = 17825806
 )
 
+type RichBlock struct {
+	Name      string                 `json:"Name"`
+	Val       int                    `json:"Val"`
+	RuntimeID int                    `json:"RuntimeID"`
+	Props     map[string]interface{} `json:"Props"`
+	Version   int                    `json:"Version"`
+}
+
 var (
 	// RuntimeIDToState must hold a function to convert a runtime ID to a name and its state properties.
 	RuntimeIDToState func(runtimeID uint32) (name string, properties map[string]interface{}, found bool)
@@ -26,6 +34,7 @@ var (
 			return bytes.NewBuffer(make([]byte, 0, 1024))
 		},
 	}
+	RuntimeIDToRichBlock func(runtimeID uint32) *RichBlock
 )
 
 type (

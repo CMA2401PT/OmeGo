@@ -37,8 +37,11 @@ func (diskEncoding) encodePalette(buf *bytes.Buffer, p *Palette) {
 	for index, runtimeID := range p.blockRuntimeIDs {
 		// Get the block state registered with the runtime IDs we have in the palette of the block storage
 		// as we need the name and data value to store.
-		name, props, _ := RuntimeIDToState(runtimeID)
-		blocks[index] = blockEntry{Name: name, State: props, Version: CurrentBlockVersion}
+		rBlock := RuntimeIDToRichBlock(runtimeID)
+		//if strings.Contains(rBlock.Name, "stairs") {
+		//	fmt.Println(rBlock)
+		//}
+		blocks[index] = blockEntry{Name: rBlock.Name, State: rBlock.Props, Version: CurrentBlockVersion}
 	}
 	// Marshal the slice of block states into NBT and add it to the byte slice.
 	enc := nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian)

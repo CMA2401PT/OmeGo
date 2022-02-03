@@ -23,7 +23,7 @@ func NetworkDecode(air uint32, data []byte, subChunkCount int) (*Chunk, error) {
 	)
 	//fmt.Printf("decode sub chunk")
 	for y := 0; y < subChunkCount; y++ {
-		fmt.Printf(" %d", y)
+		//fmt.Printf(" %d", y)
 		c.sub[y], err = decodeSubChunk(buf, air, NetworkEncoding)
 		if err != nil {
 			return nil, err

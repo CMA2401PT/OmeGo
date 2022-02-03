@@ -184,26 +184,44 @@ func (cm *ChunkMirror) hasCache(pos world.ChunkPos) bool {
 	return false
 }
 
-func (cm *ChunkMirror) onNewChunk(p *packet.LevelChunk) {
-	defer func() {
-		if info := recover(); info != nil {
-			fmt.Printf("Chunk Mirror: onNewChunk, panic happen (%v) @ (%v,%v)\n", info, p.ChunkX, p.ChunkZ)
-			c, err := chunk.NetworkDecode(block_define.AirRuntimeId, p.RawPayload, int(p.SubChunkCount))
-			if !cm.doCache {
-				fmt.Printf("Skip Chunk @ (%v,%v)", p.ChunkX, p.ChunkZ)
-				return
-			}
-			if err != nil {
-				fmt.Printf("Chunk Mirror: onNewChunk, an error occur when decode network package (%v)\n", err)
-				return
-			}
-			chunkX, chunkZ := p.ChunkX, p.ChunkZ
-			pos := world.ChunkPos{chunkX, chunkZ}
+func (cm *ChunkMirror) reflectBlock(pos world.ChunkPos, pX, pY, pZ byte, rid uint32) {
 
-			err = cm.WorldProvider.SaveChunk(pos, c)
-			fmt.Println(err)
+}
+
+func (cm *ChunkMirror) reflectChunk(pos world.ChunkPos, c *chunk.Chunk) {
+	var subIndex, pX, pY, pZ byte
+	rid := block_define.AirRuntimeId
+	AirRID := block_define.AirRuntimeId
+	var subChunk *chunk.SubChunk
+	for subIndex = 0; subIndex < 16; subIndex++ {
+		subChunk = c.Sub()[subIndex]
+		if subChunk == nil {
+			continue
 		}
-	}()
+		layers := subChunk.Layers()
+		if uint8(len(layers)) <= 0 {
+			continue
+		}
+		layer := layers[0]
+		var sY byte
+		for sY = 0; sY < 16; sY++ {
+			pY = subIndex<<4 + sY
+			for pX = 0; pX < 16; pX++ {
+				for pZ = 0; pZ < 16; pZ++ {
+					rid = layer.RuntimeID(pX, sY, pZ)
+					if rid == AirRID {
+						continue
+					} else {
+						cm.reflectBlock(pos, pX, pY, pZ, rid)
+					}
+				}
+			}
+		}
+	}
+	c.BlockNBT()
+}
+
+func (cm *ChunkMirror) onNewChunk(p *packet.LevelChunk) {
 	c, err := chunk.NetworkDecode(block_define.AirRuntimeId, p.RawPayload, int(p.SubChunkCount))
 	if !cm.doCache {
 		fmt.Printf("Skip Chunk @ (%v,%v)", p.ChunkX, p.ChunkZ)
@@ -218,6 +236,15 @@ func (cm *ChunkMirror) onNewChunk(p *packet.LevelChunk) {
 	chunkX, chunkZ := p.ChunkX, p.ChunkZ
 	pos := world.ChunkPos{chunkX, chunkZ}
 
+	if !cm.doCache {
+		fmt.Printf("Skip Chunk @ (%v,%v)", p.ChunkX, p.ChunkZ)
+		return
+	}
+	if err != nil {
+		fmt.Printf("Chunk Mirror: onNewChunk, an error occur when decode network package (%v)\n", err)
+		return
+	}
+	cm.reflectChunk(pos, c)
 	err = cm.WorldProvider.SaveChunk(pos, c)
 	if err != nil {
 		fmt.Println("Chunk Mirror: onNewChunk, an error occur when cache Chunk")

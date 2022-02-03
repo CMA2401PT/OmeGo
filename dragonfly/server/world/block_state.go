@@ -3,6 +3,7 @@ package world
 import (
 	//"bytes"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"main.go/dragonfly/server/world/chunk"
 	//"main.go/minecraft/nbt"
@@ -17,7 +18,8 @@ var (
 	//blockStateData []byte
 	// blocks holds a list of all registered Blocks indexed by their runtime ID. Blocks that were not explicitly
 	// registered are of the type unknownBlock.
-	blocks []Block
+	blocks     []Block
+	richBlocks []*chunk.RichBlock
 	// stateRuntimeIDs holds a map for looking up the runtime ID of a block by the stateHash it produces.
 	stateRuntimeIDs = map[stateHash]uint32{}
 	// nbtBlocks holds a list of NBTer implementations for blocks registered that implement the NBTer interface.
@@ -29,33 +31,33 @@ var (
 )
 
 func LoadBlockState(block Block, nbt map[string]interface{}) Block {
-	blk:=block.(unknownBlock)
-	nbt["data"]=blk.blockState.Properties["data"]
-	blk.blockState.Properties=nbt
+	blk := block.(unknownBlock)
+	nbt["data"] = blk.blockState.Properties["data"]
+	blk.blockState.Properties = nbt
 	return blk
 }
 
 func LoadRuntimeID(block Block) uint32 {
-	blk:=block.(unknownBlock)
+	blk := block.(unknownBlock)
 	return blk.runtimeId
 }
 
 func RegisterBlockState(name string, data int32) {
-	registerBlockState(blockState {
+	registerBlockState(blockState{
 		Name: name,
-		Properties: map[string]interface{} {
+		Properties: map[string]interface{}{
 			"data": data,
 		},
-	},false)
+	}, false)
 }
 
 func RegisterUnimplementedBlock(times int32) {
-	registerBlockState(blockState {
+	registerBlockState(blockState{
 		Name: "minecraft:unimplemented",
-		Properties: map[string]interface{} {
+		Properties: map[string]interface{}{
 			"times": times,
 		},
-	},true)
+	}, true)
 }
 
 func init() {
@@ -65,6 +67,15 @@ func init() {
 		}
 		name, properties = blocks[runtimeID].EncodeBlock()
 		return name, properties, true
+	}
+	chunk.RuntimeIDToRichBlock = func(runtimeID uint32) *chunk.RichBlock {
+		if runtimeID >= uint32(len(richBlocks)) {
+			return nil
+		}
+		if runtimeID != uint32(richBlocks[runtimeID].RuntimeID) {
+			panic(fmt.Errorf("Runtime ID Mismatch! %v %v %v", runtimeID, blocks[runtimeID], richBlocks[runtimeID]))
+		}
+		return richBlocks[runtimeID]
 	}
 	chunk.StateToRuntimeID = func(name string, properties map[string]interface{}) (runtimeID uint32, found bool) {
 		rid, ok := stateRuntimeIDs[stateHash{name: name, properties: hashProperties(properties)}]
@@ -93,18 +104,33 @@ func registerBlockState(s blockState, unimplemented bool) {
 		panic(fmt.Sprintf("cannot register the same state twice (%+v)", s))
 	}
 	rid := uint32(len(blocks))
-	if s.Name == "minecraft:air" || s.Name=="air" {
+	if s.Name == "minecraft:air" || s.Name == "air" {
 		airRID = rid
 	}
 	stateRuntimeIDs[h] = rid
 	if unimplemented {
-		rid=50000000
+		rid = 50000000
 	}
-	blocks = append(blocks, unknownBlock{s,rid})
+	blocks = append(blocks, unknownBlock{s, rid})
 
 	nbtBlocks = append(nbtBlocks, false)
 	chunk.FilteringBlocks = append(chunk.FilteringBlocks, 15)
 	chunk.LightBlocks = append(chunk.LightBlocks, 0)
+}
+
+func LoadRichBlocks(richBlocksData []byte) {
+	err := json.Unmarshal(richBlocksData, &richBlocks)
+	if err != nil {
+		panic(fmt.Sprintf("Cannot Load Rich Block Data"))
+	}
+	for _, b := range richBlocks {
+		if b.Props == nil {
+			b.Props = make(map[string]interface{})
+		}
+	}
+	if len(richBlocks) != len(blocks) {
+		panic(fmt.Errorf("block define conflict!"))
+	}
 }
 
 // unknownBlock represents a block that has not yet been implemented. It is used for registering block

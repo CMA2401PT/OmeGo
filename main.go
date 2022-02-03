@@ -13,7 +13,7 @@ import (
 	define "main.go/plugins/define"
 	"main.go/shield"
 	"main.go/task"
-	WordInit "main.go/world/define"
+	world_blocks_define "main.go/world/define"
 	"os"
 	"os/signal"
 )
@@ -100,7 +100,8 @@ func main() {
 }
 
 func initDragonFlyServer(task *task.TaskIO, config *config.DragonFlyServerConfig) func() {
-	WordInit.InitRuntimeIds()
+	world_blocks_define.InitRuntimeIds()
+	world_blocks_define.InitRichBlocks()
 	return func() {}
 }
 
