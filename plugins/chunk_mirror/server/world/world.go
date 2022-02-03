@@ -2087,12 +2087,13 @@ func (w *World) chunkCacheJanitor() {
 // by the mutex present in the chunk.Chunk held.
 type ChunkData struct {
 	*chunk.Chunk
-	E        map[cube.Pos]Block
-	v        []Viewer
-	entities []Entity
+	E          map[cube.Pos]Block
+	AuxNbtInfo map[cube.Pos]map[string]interface{}
+	v          []Viewer
+	entities   []Entity
 }
 
 // NewChunkData returns a new ChunkData wrapper around the chunk.Chunk passed.
 func NewChunkData(c *chunk.Chunk) *ChunkData {
-	return &ChunkData{Chunk: c, E: map[cube.Pos]Block{}}
+	return &ChunkData{Chunk: c, E: map[cube.Pos]Block{}, AuxNbtInfo: make(map[cube.Pos]map[string]interface{})}
 }

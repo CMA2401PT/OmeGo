@@ -37,7 +37,8 @@ type (
 		Biomes []byte
 		// BlockNBT is an encoded NBT array of all blocks that carry additional NBT, such as chests, with all
 		// their contents.
-		BlockNBT []byte
+		BlockNBT   []byte
+		AuxNBTData []byte
 	}
 	// blockEntry represents a block as found in a disk save of a world.
 	blockEntry struct {

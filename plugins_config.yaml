@@ -71,3 +71,4 @@ plugins:
     configs:
       world_dir: "data/MirrorChunk"
       expired_time: "2022-02-01 22:50:54"
+      auto_cache_by_default: on

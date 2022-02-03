@@ -21,10 +21,10 @@ import (
 
 // Provider implements a world provider for the Minecraft world format, which is based on a leveldb database.
 type Provider struct {
-	db  *leveldb.DB
+	DB  *leveldb.DB
 	dim world.Dimension
 	dir string
-	d   data
+	D   data
 }
 
 // chunkVersion is the current version of chunks.
@@ -50,10 +50,10 @@ func New(dir string, d world.Dimension) (*Provider, error) {
 			// The file did not have enough content, meaning it is corrupted. We return an error.
 			return nil, fmt.Errorf("level.dat exists but has no data")
 		}
-		if err := nbt.UnmarshalEncoding(f[8:], &p.d, nbt.LittleEndian); err != nil {
+		if err := nbt.UnmarshalEncoding(f[8:], &p.D, nbt.LittleEndian); err != nil {
 			return nil, fmt.Errorf("error decoding level.dat NBT: %w", err)
 		}
-		p.d.WorldStartCount++
+		p.D.WorldStartCount++
 	}
 	db, ok := cacheLoad(dir)
 	if !ok {
@@ -67,74 +67,74 @@ func New(dir string, d world.Dimension) (*Provider, error) {
 		cacheStore(dir, db)
 	}
 
-	p.db = db
+	p.DB = db
 	return p, nil
 }
 
 // initDefaultLevelDat initialises a default level.dat file.
 func (p *Provider) initDefaultLevelDat() {
-	p.d.DoDayLightCycle = true
-	p.d.DoWeatherCycle = true
-	p.d.BaseGameVersion = protocol.CurrentVersion
-	p.d.NetworkVersion = protocol.CurrentProtocol
-	p.d.LastOpenedWithVersion = minimumCompatibleClientVersion
-	p.d.MinimumCompatibleClientVersion = minimumCompatibleClientVersion
-	p.d.LevelName = "World"
-	p.d.GameType = 1
-	p.d.StorageVersion = 8
-	p.d.Generator = 1
-	p.d.Abilities.WalkSpeed = 0.1
-	p.d.PVP = true
-	p.d.WorldStartCount = 1
-	p.d.RandomTickSpeed = 1
-	p.d.FallDamage = true
-	p.d.FireDamage = true
-	p.d.DrowningDamage = true
-	p.d.CommandsEnabled = true
-	p.d.MultiPlayerGame = true
-	p.d.SpawnY = math.MaxInt32
-	p.d.Difficulty = 2
-	p.d.DoWeatherCycle = true
-	p.d.RainLevel = 1.0
-	p.d.LightningLevel = 1.0
-	p.d.ServerChunkTickRange = 6
-	p.d.NetherScale = 8
+	p.D.DoDayLightCycle = true
+	p.D.DoWeatherCycle = true
+	p.D.BaseGameVersion = protocol.CurrentVersion
+	p.D.NetworkVersion = protocol.CurrentProtocol
+	p.D.LastOpenedWithVersion = minimumCompatibleClientVersion
+	p.D.MinimumCompatibleClientVersion = minimumCompatibleClientVersion
+	p.D.LevelName = "World"
+	p.D.GameType = 1
+	p.D.StorageVersion = 8
+	p.D.Generator = 1
+	p.D.Abilities.WalkSpeed = 0.1
+	p.D.PVP = true
+	p.D.WorldStartCount = 1
+	p.D.RandomTickSpeed = 1
+	p.D.FallDamage = true
+	p.D.FireDamage = true
+	p.D.DrowningDamage = true
+	p.D.CommandsEnabled = true
+	p.D.MultiPlayerGame = true
+	p.D.SpawnY = math.MaxInt32
+	p.D.Difficulty = 2
+	p.D.DoWeatherCycle = true
+	p.D.RainLevel = 1.0
+	p.D.LightningLevel = 1.0
+	p.D.ServerChunkTickRange = 6
+	p.D.NetherScale = 8
 }
 
 // Settings returns the world.Settings of the world loaded by the Provider.
 func (p *Provider) Settings(s *world.Settings) {
-	s.Name = p.d.LevelName
-	s.Spawn = cube.Pos{int(p.d.SpawnX), int(p.d.SpawnY), int(p.d.SpawnZ)}
-	s.Time = p.d.Time
-	s.TimeCycle = p.d.DoDayLightCycle
-	s.WeatherCycle = p.d.DoWeatherCycle
-	s.RainTime = int64(p.d.RainTime)
-	s.Raining = p.d.RainLevel > 0
-	s.ThunderTime = int64(p.d.LightningTime)
-	s.Thundering = p.d.LightningLevel > 0
-	s.CurrentTick = p.d.CurrentTick
+	s.Name = p.D.LevelName
+	s.Spawn = cube.Pos{int(p.D.SpawnX), int(p.D.SpawnY), int(p.D.SpawnZ)}
+	s.Time = p.D.Time
+	s.TimeCycle = p.D.DoDayLightCycle
+	s.WeatherCycle = p.D.DoWeatherCycle
+	s.RainTime = int64(p.D.RainTime)
+	s.Raining = p.D.RainLevel > 0
+	s.ThunderTime = int64(p.D.LightningTime)
+	s.Thundering = p.D.LightningLevel > 0
+	s.CurrentTick = p.D.CurrentTick
 	s.DefaultGameMode = p.loadDefaultGameMode()
 	s.Difficulty = p.loadDifficulty()
-	s.TickRange = p.d.ServerChunkTickRange
+	s.TickRange = p.D.ServerChunkTickRange
 }
 
 // SaveSettings saves the world.Settings passed to the level.dat.
 func (p *Provider) SaveSettings(s *world.Settings) {
-	p.d.LevelName = s.Name
-	p.d.SpawnX, p.d.SpawnY, p.d.SpawnZ = int32(s.Spawn.X()), int32(s.Spawn.Y()), int32(s.Spawn.Z())
-	p.d.Time = s.Time
-	p.d.DoDayLightCycle = s.TimeCycle
-	p.d.DoWeatherCycle = s.WeatherCycle
-	p.d.RainTime, p.d.RainLevel = int32(s.RainTime), 0
-	p.d.LightningTime, p.d.LightningLevel = int32(s.ThunderTime), 0
+	p.D.LevelName = s.Name
+	p.D.SpawnX, p.D.SpawnY, p.D.SpawnZ = int32(s.Spawn.X()), int32(s.Spawn.Y()), int32(s.Spawn.Z())
+	p.D.Time = s.Time
+	p.D.DoDayLightCycle = s.TimeCycle
+	p.D.DoWeatherCycle = s.WeatherCycle
+	p.D.RainTime, p.D.RainLevel = int32(s.RainTime), 0
+	p.D.LightningTime, p.D.LightningLevel = int32(s.ThunderTime), 0
 	if s.Raining {
-		p.d.RainLevel = 1
+		p.D.RainLevel = 1
 	}
 	if s.Thundering {
-		p.d.LightningLevel = 1
+		p.D.LightningLevel = 1
 	}
-	p.d.CurrentTick = s.CurrentTick
-	p.d.ServerChunkTickRange = s.TickRange
+	p.D.CurrentTick = s.CurrentTick
+	p.D.ServerChunkTickRange = s.TickRange
 	p.saveDefaultGameMode(s.DefaultGameMode)
 	p.saveDifficulty(s.Difficulty)
 }
@@ -147,17 +147,17 @@ func (p *Provider) LoadChunk(position world.ChunkPos) (c *chunk.Chunk, exists bo
 
 	// This key is where the version of a chunk resides. The chunk version has changed many times, without any
 	// actual substantial changes, so we don't check this.
-	_, err = p.db.Get(append(key, keyVersion), nil)
+	_, err = p.DB.Get(append(key, keyVersion), nil)
 	if err == leveldb.ErrNotFound {
 		// The new key was not found, so we try the old key.
-		if _, err = p.db.Get(append(key, keyVersionOld), nil); err != nil {
+		if _, err = p.DB.Get(append(key, keyVersionOld), nil); err != nil {
 			return nil, false, nil
 		}
 	} else if err != nil {
 		return nil, true, fmt.Errorf("error reading version: %w", err)
 	}
 
-	data.Biomes, err = p.db.Get(append(key, key3DData), nil)
+	data.Biomes, err = p.DB.Get(append(key, key3DData), nil)
 	if err != nil && err != leveldb.ErrNotFound {
 		return nil, false, fmt.Errorf("error reading 3D data: %w", err)
 	}
@@ -166,14 +166,18 @@ func (p *Provider) LoadChunk(position world.ChunkPos) (c *chunk.Chunk, exists bo
 		data.Biomes = data.Biomes[512:]
 	}
 
-	data.BlockNBT, err = p.db.Get(append(key, keyBlockEntities), nil)
+	data.BlockNBT, err = p.DB.Get(append(key, keyBlockEntities), nil)
 	// Block entities aren't present when there aren't any, so it's okay if we can't find the key.
 	if err != nil && err != leveldb.ErrNotFound {
 		return nil, true, fmt.Errorf("error reading block entities: %w", err)
 	}
+	data.AuxNBTData, err = p.DB.Get(append(key, keySelfDefineAuxData), nil)
+	if err != nil && err != leveldb.ErrNotFound {
+		return nil, true, fmt.Errorf("error reading aux nbt data: %w", err)
+	}
 	data.SubChunks = make([][]byte, (p.dim.Range().Height()>>4)+1)
 	for i := range data.SubChunks {
-		data.SubChunks[i], err = p.db.Get(append(key, keySubChunkData, uint8(i+(p.dim.Range()[0]>>4))), nil)
+		data.SubChunks[i], err = p.DB.Get(append(key, keySubChunkData, uint8(i+(p.dim.Range()[0]>>4))), nil)
 		if err == leveldb.ErrNotFound {
 			// No sub chunk present at this Y level. We skip this one and move to the next, which might still
 			// be present.
@@ -192,23 +196,23 @@ func (p *Provider) SaveChunk(position world.ChunkPos, c *chunk.Chunk) error {
 	data := chunk.Encode(c, chunk.DiskEncoding)
 
 	key := p.index(position)
-	_ = p.db.Put(append(key, keyVersion), []byte{chunkVersion}, nil)
+	_ = p.DB.Put(append(key, keyVersion), []byte{chunkVersion}, nil)
 	// Write the heightmap by just writing 512 empty bytes.
-	_ = p.db.Put(append(key, key3DData), append(make([]byte, 512), data.Biomes...), nil)
+	_ = p.DB.Put(append(key, key3DData), append(make([]byte, 512), data.Biomes...), nil)
 
 	finalisation := make([]byte, 4)
 	binary.LittleEndian.PutUint32(finalisation, 2)
-	_ = p.db.Put(append(key, keyFinalisation), finalisation, nil)
+	_ = p.DB.Put(append(key, keyFinalisation), finalisation, nil)
 
 	for i, sub := range data.SubChunks {
-		_ = p.db.Put(append(key, keySubChunkData, byte(i+(c.Range()[0]>>4))), sub, nil)
+		_ = p.DB.Put(append(key, keySubChunkData, byte(i+(c.Range()[0]>>4))), sub, nil)
 	}
 	return nil
 }
 
 // loadDefaultGameMode returns the default game mode stored in the level.dat.
 func (p *Provider) loadDefaultGameMode() world.GameMode {
-	switch p.d.GameType {
+	switch p.D.GameType {
 	default:
 		return world.GameModeSurvival
 	case 1:
@@ -224,19 +228,19 @@ func (p *Provider) loadDefaultGameMode() world.GameMode {
 func (p *Provider) saveDefaultGameMode(mode world.GameMode) {
 	switch mode {
 	case world.GameModeSurvival:
-		p.d.GameType = 0
+		p.D.GameType = 0
 	case world.GameModeCreative:
-		p.d.GameType = 1
+		p.D.GameType = 1
 	case world.GameModeAdventure:
-		p.d.GameType = 2
+		p.D.GameType = 2
 	case world.GameModeSpectator:
-		p.d.GameType = 3
+		p.D.GameType = 3
 	}
 }
 
 // loadDifficulty loads the difficulty stored in the level.dat.
 func (p *Provider) loadDifficulty() world.Difficulty {
-	switch p.d.Difficulty {
+	switch p.D.Difficulty {
 	default:
 		return world.DifficultyNormal
 	case 0:
@@ -252,19 +256,19 @@ func (p *Provider) loadDifficulty() world.Difficulty {
 func (p *Provider) saveDifficulty(d world.Difficulty) {
 	switch d {
 	case world.DifficultyPeaceful:
-		p.d.Difficulty = 0
+		p.D.Difficulty = 0
 	case world.DifficultyEasy:
-		p.d.Difficulty = 1
+		p.D.Difficulty = 1
 	case world.DifficultyNormal:
-		p.d.Difficulty = 2
+		p.D.Difficulty = 2
 	case world.DifficultyHard:
-		p.d.Difficulty = 3
+		p.D.Difficulty = 3
 	}
 }
 
 // LoadEntities loads all entities from the chunk position passed.
 func (p *Provider) LoadEntities(pos world.ChunkPos) ([]world.SaveableEntity, error) {
-	data, err := p.db.Get(append(p.index(pos), keyEntities), nil)
+	data, err := p.DB.Get(append(p.index(pos), keyEntities), nil)
 	if err != leveldb.ErrNotFound && err != nil {
 		return nil, err
 	}
@@ -299,7 +303,7 @@ func (p *Provider) LoadEntities(pos world.ChunkPos) ([]world.SaveableEntity, err
 // SaveEntities saves all entities to the chunk position passed.
 func (p *Provider) SaveEntities(pos world.ChunkPos, entities []world.SaveableEntity) error {
 	if len(entities) == 0 {
-		return p.db.Delete(append(p.index(pos), keyEntities), nil)
+		return p.DB.Delete(append(p.index(pos), keyEntities), nil)
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -311,12 +315,48 @@ func (p *Provider) SaveEntities(pos world.ChunkPos, entities []world.SaveableEnt
 			return fmt.Errorf("save entities: error encoding NBT: %w", err)
 		}
 	}
-	return p.db.Put(append(p.index(pos), keyEntities), buf.Bytes(), nil)
+	return p.DB.Put(append(p.index(pos), keyEntities), buf.Bytes(), nil)
+}
+
+// SaveBlockNBT saves all block NBT data to the chunk position passed.
+func (p *Provider) SaveBlockAuxData(position world.ChunkPos, data []map[string]interface{}) error {
+	if len(data) == 0 {
+		return p.DB.Delete(append(p.index(position), keyBlockEntities), nil)
+	}
+	buf := bytes.NewBuffer(nil)
+	enc := nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian)
+	for _, d := range data {
+		if err := enc.Encode(d); err != nil {
+			return fmt.Errorf("error encoding block NBT: (%w)", err)
+		}
+	}
+	return p.DB.Put(append(p.index(position), keySelfDefineAuxData), buf.Bytes(), nil)
+}
+
+// SaveBlockNBT saves all block NBT data to the chunk position passed.
+func (p *Provider) LoadBlockAuxData(position world.ChunkPos) ([]map[string]interface{}, error) {
+	data, err := p.DB.Get(append(p.index(position), keySelfDefineAuxData), nil)
+	if err != leveldb.ErrNotFound && err != nil {
+		return nil, err
+	}
+	var a []map[string]interface{}
+
+	buf := bytes.NewBuffer(data)
+	dec := nbt.NewDecoderWithEncoding(buf, nbt.LittleEndian)
+
+	for buf.Len() != 0 {
+		var m map[string]interface{}
+		if err := dec.Decode(&m); err != nil {
+			return nil, fmt.Errorf("error decoding block NBT: %w", err)
+		}
+		a = append(a, m)
+	}
+	return a, nil
 }
 
 // LoadBlockNBT loads all block entities from the chunk position passed.
 func (p *Provider) LoadBlockNBT(position world.ChunkPos) ([]map[string]interface{}, error) {
-	data, err := p.db.Get(append(p.index(position), keyBlockEntities), nil)
+	data, err := p.DB.Get(append(p.index(position), keyBlockEntities), nil)
 	if err != leveldb.ErrNotFound && err != nil {
 		return nil, err
 	}
@@ -338,7 +378,7 @@ func (p *Provider) LoadBlockNBT(position world.ChunkPos) ([]map[string]interface
 // SaveBlockNBT saves all block NBT data to the chunk position passed.
 func (p *Provider) SaveBlockNBT(position world.ChunkPos, data []map[string]interface{}) error {
 	if len(data) == 0 {
-		return p.db.Delete(append(p.index(position), keyBlockEntities), nil)
+		return p.DB.Delete(append(p.index(position), keyBlockEntities), nil)
 	}
 	buf := bytes.NewBuffer(nil)
 	enc := nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian)
@@ -347,12 +387,12 @@ func (p *Provider) SaveBlockNBT(position world.ChunkPos, data []map[string]inter
 			return fmt.Errorf("error encoding block NBT: %w", err)
 		}
 	}
-	return p.db.Put(append(p.index(position), keyBlockEntities), buf.Bytes(), nil)
+	return p.DB.Put(append(p.index(position), keyBlockEntities), buf.Bytes(), nil)
 }
 
 // Close closes the provider, saving any file that might need to be saved, such as the level.dat.
 func (p *Provider) Close() error {
-	p.d.LastPlayed = time.Now().Unix()
+	p.D.LastPlayed = time.Now().Unix()
 	if cacheDelete(p.dir) != 0 {
 		// The same provider is still alive elsewhere. Don't store the data to the level.dat and levelname.txt just yet.
 		return nil
@@ -364,7 +404,7 @@ func (p *Provider) Close() error {
 
 	buf := bytes.NewBuffer(nil)
 	_ = binary.Write(buf, binary.LittleEndian, int32(3))
-	nbtData, err := nbt.MarshalEncoding(p.d, nbt.LittleEndian)
+	nbtData, err := nbt.MarshalEncoding(p.D, nbt.LittleEndian)
 	if err != nil {
 		return fmt.Errorf("error encoding level.dat to NBT: %w", err)
 	}
@@ -377,10 +417,10 @@ func (p *Provider) Close() error {
 		return fmt.Errorf("error closing level.dat: %w", err)
 	}
 	//noinspection SpellCheckingInspection
-	if err := ioutil.WriteFile(filepath.Join(p.dir, "levelname.txt"), []byte(p.d.LevelName), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(p.dir, "levelname.txt"), []byte(p.D.LevelName), 0644); err != nil {
 		return fmt.Errorf("error writing levelname.txt: %w", err)
 	}
-	return p.db.Close()
+	return p.DB.Close()
 }
 
 // index returns a byte buffer holding the written index of the chunk position passed. If the dimension passed to New

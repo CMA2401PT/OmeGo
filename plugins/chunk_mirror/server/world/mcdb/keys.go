@@ -26,6 +26,8 @@ const (
 	keyFinalisation = '6' // 36
 	// key3DData holds 3-dimensional biomes for the entire chunk.
 	key3DData = '+' // 2b
+	// special key for nbt when block currently don't support nbt
+	keySelfDefineAuxData = 'a'
 	// key2DData is no longer used in worlds with world height change. It was replaced by key3DData in newer worlds
 	// which has 3-dimensional biomes.
 	key2DData = '-' // 2d

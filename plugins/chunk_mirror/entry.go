@@ -18,6 +18,7 @@ import (
 	block_define "main.go/world/define"
 	"os"
 	"path"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -40,13 +41,24 @@ type RichBlocks struct {
 	RichBlocks    []RichBlock
 }
 
+type ChunkListenerCb func(pos reflect_world.ChunkPos, cdata *reflect_world.ChunkData)
+type ListenRuleFn func(X, Z int) bool
+type ChunkListener struct {
+	cb     ChunkListenerCb
+	ruleFN ListenRuleFn
+}
+
 type ChunkMirror struct {
+	AutoCacheByDefault   bool   `yaml:"auto_cache_by_default"`
 	WorldDir             string `yaml:"world_dir"`
 	ConfigExpiredTimeStr string `yaml:"expired_time"`
 	WorldMin             int    `yaml:"world_min"`
 	WorldMax             int    `yaml:"world_max"`
+	FarPointX            int    `yaml:"far_point_x"`
+	FarPointZ            int    `yaml:"far_point_z"`
 	NeteaseAirRID        int
 	MirrorAirRID         uint32
+	richBlocks           *RichBlocks
 	worldRange           cube.Range
 	taskIO               *task.TaskIO
 	WorldProvider        *reflect_provider.Provider
@@ -57,9 +69,14 @@ type ChunkMirror struct {
 	cacheMap             map[reflect_world.ChunkPos]time.Time
 	expiredTime          time.Time
 	doCache              bool
+	ChunkListeners       map[*ChunkListener]*ChunkListener
+	lastChunkTime        time.Time
+	chunkReqs            chan *ChunkReq
+	isWaiting            bool
+	waitLock             chan int
 }
 
-func (cm *ChunkMirror) LoadCacheRecordFile() {
+func (cm *ChunkMirror) loadCacheRecordFile() {
 	if _, err := os.Stat(cm.cacheRecordFile); os.IsNotExist(err) {
 		fmt.Println("Chunk Mirror: Cache Record File Not Exist")
 	} else {
@@ -96,7 +113,7 @@ func (cm *ChunkMirror) LoadCacheRecordFile() {
 	}
 }
 
-func (cm *ChunkMirror) DumpCacheRecordFile() {
+func (cm *ChunkMirror) dumpCacheRecordFile() {
 	fmt.Println("Chunk Mirror: Cache Record Dumping...")
 	fi, err := os.OpenFile(cm.cacheRecordFile, os.O_WRONLY|os.O_CREATE, 644)
 	if err != nil {
@@ -118,20 +135,29 @@ func (cm *ChunkMirror) DumpCacheRecordFile() {
 }
 
 func (cm *ChunkMirror) New(config []byte) define.Plugin {
-	cm.doCache = true
 	var err error
+	cm.AutoCacheByDefault = true
 	cm.WorldDir = "TmpWorld"
 	cm.ConfigExpiredTimeStr = ""
 	cm.WorldMin = -64
 	cm.WorldMax = 320
 	cm.worldRange = cube.Range{cm.WorldMin, cm.WorldMax}
 
+	cm.FarPointX = 100000
+	cm.FarPointZ = 100000
+
+	cm.isWaiting = false
+	cm.waitLock = make(chan int)
+
 	err = yaml.Unmarshal(config, &cm)
 	if err != nil {
 		panic("Chunk Mirror: cannot handle config")
 	}
+	cm.doCache = cm.AutoCacheByDefault
+	cm.chunkReqs = make(chan *ChunkReq, 4)
 	richBlocks := RichBlocks{}
 	err = json.Unmarshal(richBlocksData, &richBlocks)
+	cm.richBlocks = &richBlocks
 	if err != nil {
 		panic("Chunk Mirror: cannot read remapping info")
 	}
@@ -157,13 +183,14 @@ func (cm *ChunkMirror) New(config []byte) define.Plugin {
 		panic(fmt.Sprintf("Chunk Mirror: Read Config fail (%v)", err))
 	}
 	cm.WorldProvider, err = reflect_provider.New(cm.WorldDir, reflect_world.Overworld)
+	cm.WorldProvider.D.LevelName = "MirrorWorld"
 	if err != nil {
 		panic(fmt.Sprintf("Chunk Mirror: Load/Create Chunk @ %v fail (%v)", cm.WorldDir, err))
 	}
 	cm.cacheRecordFile = path.Join(cm.WorldDir, "cache_log.txt")
 	cm.cacheMap = make(map[reflect_world.ChunkPos]time.Time)
 	cm.providerMu = sync.Mutex{}
-	cm.LoadCacheRecordFile()
+	cm.loadCacheRecordFile()
 	return cm
 }
 
@@ -175,15 +202,60 @@ func (cm *ChunkMirror) Close() {
 	if err != nil {
 		fmt.Printf("Chunk Mirror: Close WorldProvider Fail (%v)\n", err)
 	}
-	cm.DumpCacheRecordFile()
+	cm.dumpCacheRecordFile()
+}
+
+func (cm *ChunkMirror) handleOneReq(req *ChunkReq) {
+	fmt.Printf("Mirror-Chunk: Activate Require Chunk @ (%v,%v)\n", req.X, req.Z)
+	cm.taskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", req.X*16, req.Z*16))
+	time.Sleep(time.Second * 1)
+	retryTime := 0
+	cacheAfter := req.AllowCacheAfter
+	Fx, Fz := req.FarPoint[0], req.FarPoint[1]
+	for {
+		if req.Dry && cm.HasCache(req.pos, req.AllowCacheAfter) {
+			req.respChan <- &reflect_world.ChunkData{}
+			return
+		}
+		cd, err := cm.GetCachedChunk(req.pos, cacheAfter)
+		if err == nil {
+			req.respChan <- cd
+			return
+		}
+		select {
+		case <-cm.waitLock:
+			//fmt.Printf("New Chunk Arrival")
+		case <-time.After(time.Second):
+			if req.hasTimeOut {
+				if time.Now().After(req.deadlineTime) {
+					close(req.respChan)
+					return
+				}
+			} else {
+				if !cm.isWaiting {
+					cm.waitLock = make(chan int)
+					cm.isWaiting = true
+				}
+				retryTime += 1
+				if retryTime > 16 {
+					retryTime = 16
+				}
+				fmt.Printf("Retry (%v) -> step1. Move Far @ (%v,%v)\n", retryTime, Fx, Fz)
+				cm.taskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", Fx, Fz))
+				time.Sleep(time.Duration(retryTime) * 500 * time.Millisecond)
+				fmt.Printf("Retry (%v) -> step2. Move Back @ (%v,%v)\n", retryTime, req.X*16, req.Z*16)
+				cm.taskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", req.X*16, req.Z*16))
+				fmt.Printf("Retry (%v) -> step3. Delay (%v,%v)\n")
+			}
+		}
+	}
 }
 
 func (cm *ChunkMirror) Routine() {
-	//cm.taskIO.WaitInit()
-	//time.AfterFunc(time.Second*10, func() {
-	//	fmt.Println("begin mirror chunk")
-	//	cm.doCache = true
-	//})
+	for {
+		req := <-cm.chunkReqs
+		cm.handleOneReq(req)
+	}
 }
 
 func (cm *ChunkMirror) Inject(taskIO *task.TaskIO, collaborationContext map[string]define.Plugin) define.Plugin {
@@ -202,40 +274,20 @@ func (cm *ChunkMirror) InjectListener() {
 	}
 }
 
-func (cm *ChunkMirror) GetCachedChunk(pos reflect_world.ChunkPos) (c *reflect_chunk.Chunk, err error) {
-	cm.providerMu.Lock()
-	defer cm.providerMu.Unlock()
-	if !cm.hasCache(pos) {
-		return nil, fmt.Errorf("chunk Mirror: Try Getting an non-cached Chunk")
-	}
-	loadChunk, e, err := cm.WorldProvider.LoadChunk(pos)
-	if err != nil {
-		fmt.Printf("Chunk Mirror: on Cached Chunk Load, an error occured (%v)", err)
-		return nil, err
-	}
-	if !e {
-		fmt.Printf("Chunk Mirror: on Get Cached Chunk Load, an error occured: Map Info say this chunk exist, but provider cannot find it %v", pos)
-		return nil, fmt.Errorf("chunk Mirror: on Get Cached Chunk Load, an error occured: Map Info say this chunk exist, but provider cannot find it %v", pos)
-	}
-	return loadChunk, nil
-}
-func (cm *ChunkMirror) HasCache(pos reflect_world.ChunkPos) bool {
-	cm.providerMu.Lock()
-	defer cm.providerMu.Unlock()
-	return cm.hasCache(pos)
-}
-func (cm *ChunkMirror) hasCache(pos reflect_world.ChunkPos) bool {
+func (cm *ChunkMirror) hasCache(pos reflect_world.ChunkPos, expireTime ...time.Time) bool {
 	T, hasK := cm.cacheMap[pos]
 	if hasK {
-		if T.After(cm.expiredTime) {
+		if len(expireTime) == 0 && T.After(cm.expiredTime) {
+			return true
+		}
+		if T.After(expireTime[0]) {
 			return true
 		}
 	}
 	return false
 }
 
-func (cm *ChunkMirror) saveChunk(pos reflect_world.ChunkPos, c *reflect_world.ChunkData) {
-	// We allocate a new map for all block entities.
+func SaveChunk(pos reflect_world.ChunkPos, c *reflect_world.ChunkData, p *reflect_provider.Provider) {
 	m := make([]map[string]interface{}, 0, len(c.E))
 	for pos, b := range c.E {
 		if n, ok := b.(reflect_world.NBTer); ok {
@@ -246,15 +298,28 @@ func (cm *ChunkMirror) saveChunk(pos reflect_world.ChunkPos, c *reflect_world.Ch
 		}
 	}
 	c.Compact()
-	if err := cm.WorldProvider.SaveChunk(pos, c.Chunk); err != nil {
-		fmt.Printf("Chunk Mirror: error saving chunk %v to provider: %v", pos, err)
+	if err := p.SaveChunk(pos, c.Chunk); err != nil {
+		fmt.Printf("Chunk: error saving chunk %v to provider: %v\n", pos, err)
 	}
-	if err := cm.WorldProvider.SaveBlockNBT(pos, m); err != nil {
-		fmt.Printf("Chunk Mirror: error saving block NBT in chunk %v to provider: %v", pos, err)
+	if err := p.SaveBlockNBT(pos, m); err != nil {
+		fmt.Printf("Chunk Mirror: error saving block NBT in chunk %v to provider: %v\n", pos, err)
+	}
+	auxs := make([]map[string]interface{}, 0, len(c.AuxNbtInfo))
+	for pos, aux := range c.AuxNbtInfo {
+		// Encode the block entities and add the 'x', 'y' and 'z' tags to it.
+		aux["x"], aux["y"], aux["z"] = int32(pos[0]), int32(pos[1]), int32(pos[2])
+		auxs = append(auxs, aux)
+	}
+	if err := p.SaveBlockAuxData(pos, auxs); err != nil {
+		fmt.Printf("Chunk Mirror: error saving aux NBT data in chunk %v to provider: %v\n", pos, err)
 	}
 }
 
-func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) error {
+func (cm *ChunkMirror) saveChunk(pos reflect_world.ChunkPos, c *reflect_world.ChunkData) {
+	SaveChunk(pos, c, cm.WorldProvider)
+}
+
+func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) *reflect_world.ChunkData {
 	//reflectChunk, found, err := cm.WorldProvider.LoadChunk(pos)
 	//var reflectChunkData *reflect_world.ChunkData
 	//if err != nil {
@@ -306,8 +371,27 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 		}
 	}
 	for blockPos, nbt := range c.BlockNBT() {
+		cubePos := cube.Pos{blockPos.X(), blockPos.Y(), blockPos.Z()}
+		auxBlockDefine := make(map[string]interface{})
+		auxBlockDefine["nbt"] = nbt
+
 		nbtBlockRid := c.RuntimeID(uint8(blockPos.X()), int16(blockPos.Y()), uint8(blockPos.Z()), 0)
 		reflectRid = cm.blockReflectMapping[nbtBlockRid]
+		rb := cm.richBlocks.RichBlocks[nbtBlockRid]
+		auxBlockDefine["richBlockInfo"] = struct {
+			Name             string
+			Val              int32
+			NeteaseRuntimeID int32
+			ReflectRuntimeID int32
+		}{
+			Name:             rb.Name,
+			Val:              int32(rb.Val),
+			NeteaseRuntimeID: int32(rb.NeteaseRID),
+			ReflectRuntimeID: int32(rb.ReflectRID),
+		}
+
+		reflectChunkData.AuxNbtInfo[cubePos] = auxBlockDefine
+
 		b, found := reflect_world.BlockByRuntimeID(reflectRid)
 		if !found {
 			fmt.Printf("Chunk Mirror: Nbt Block not found!  (%v -> %v) @ %v nbt: %v\n", nbtBlockRid, reflectRid, blockPos, nbt)
@@ -318,50 +402,69 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 			b := n.DecodeNBT(nbt)
 			wb, ok := b.(reflect_world.Block)
 			if !ok {
-				fmt.Printf("Chunk Mirror: Cannot Convert Nbt Block (%v -> %v) @ %v nbt: %v to a normal block! %v\n", nbtBlockRid, reflectRid, blockPos, nbt, b)
+				fmt.Printf("Chunk Mirror: Cannot Convert Nbt Block (%v -> %v) (%v) @ %v nbt: %v to a normal block! %v\n", nbtBlockRid, reflectRid, reflect.TypeOf(b), blockPos, nbt, b)
 				continue
 			}
-			reflectChunkData.E[cube.Pos{blockPos.X(), blockPos.Y(), blockPos.Z()}] = wb
+			reflectChunkData.E[cubePos] = wb
 		} else {
-			fmt.Printf("Chunk Mirror: Block (%v -> %v) @ %v nbt: %v cannot be a Nbt Block! %b\n", nbtBlockRid, reflectRid, blockPos, nbt, b)
+			fmt.Printf("Chunk Mirror: Block (%v -> %v) (%v) @ %v nbt=%v cannot be a Nbt Block! %v\n", nbtBlockRid, reflectRid, reflect.TypeOf(b), blockPos, nbt, b)
 		}
 	}
-	cm.saveChunk(pos, reflectChunkData)
-	return nil
+	return reflectChunkData
+}
+
+func (cm *ChunkMirror) getListeners(X, Z int) []ChunkListenerCb {
+	cbs := make([]ChunkListenerCb, 0)
+	for _, l := range cm.ChunkListeners {
+		if l.ruleFN(X, Z) {
+			cbs = append(cbs, l.cb)
+		}
+	}
+	return cbs
 }
 
 func (cm *ChunkMirror) onNewChunk(p *packet.LevelChunk) {
-	c, err := chunk.NetworkDecode(block_define.AirRuntimeId, p.RawPayload, int(p.SubChunkCount))
-	if !cm.doCache {
+	cm.lastChunkTime = time.Now()
+	listeners := cm.getListeners(int(p.ChunkX), int(p.ChunkZ))
+	if !cm.doCache && len(listeners) == 0 && !cm.isWaiting {
 		fmt.Printf("Skip Chunk @ (%v,%v)", p.ChunkX, p.ChunkZ)
 		return
 	}
-	cm.providerMu.Lock()
-	defer cm.providerMu.Unlock()
+	c, err := chunk.NetworkDecode(block_define.AirRuntimeId, p.RawPayload, int(p.SubChunkCount))
 	if err != nil {
 		fmt.Printf("Chunk Mirror: onNewChunk, an error occur when decode network package (%v)\n", err)
 		return
 	}
+
 	chunkX, chunkZ := p.ChunkX, p.ChunkZ
 	pos := reflect_world.ChunkPos{chunkX, chunkZ}
 
-	if !cm.doCache {
-		fmt.Printf("Skip Chunk @ (%v,%v)", p.ChunkX, p.ChunkZ)
-		return
+	reflectChunkData := cm.reflectChunk(pos, c)
+
+	if cm.doCache || cm.isWaiting {
+		cm.providerMu.Lock()
+		cm.saveChunk(pos, reflectChunkData)
+
+		if cm.hasCache(pos) {
+			fmt.Printf("Chunk Mirror: Update Cache Chunk (%v,%v)\n", chunkX, chunkZ)
+		} else {
+			fmt.Printf("Chunk Mirror: New Cache Chunk (%v,%v)\n", chunkX, chunkZ)
+		}
+		cm.cacheMap[pos] = time.Now()
+		if cm.isWaiting {
+			cm.isWaiting = false
+			close(cm.waitLock)
+		}
+		cm.providerMu.Unlock()
+		//loadedChunk, err := cm.GetCachedChunk(pos)
+		//if err != nil {
+		//	fmt.Printf("On Chunk Loaded, an error occoured! (%v)\n", err)
+		//}
+		//if len(reflectChunkData.E) > 0 {
+		//	fmt.Printf("%v,%v", loadedChunk.E, loadedChunk.AuxNbtInfo)
+		//}
 	}
-	if err != nil {
-		fmt.Printf("Chunk Mirror: onNewChunk, an error occur when decode network package (%v)\n", err)
-		return
+	for _, listener := range listeners {
+		listener(pos, reflectChunkData)
 	}
-	err = cm.reflectChunk(pos, c)
-	if err != nil {
-		fmt.Println("Chunk Mirror: onNewChunk, an error occur when cache Chunk")
-		return
-	}
-	if cm.hasCache(pos) {
-		fmt.Printf("Chunk Mirror: Update Cache Chunk (%v,%v)\n", chunkX, chunkZ)
-	} else {
-		fmt.Printf("Chunk Mirror: New Cache Chunk (%v,%v)\n", chunkX, chunkZ)
-	}
-	cm.cacheMap[pos] = time.Now()
 }
