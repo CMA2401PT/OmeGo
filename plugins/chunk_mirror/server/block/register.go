@@ -157,6 +157,7 @@ func init() {
 	registerAll(allCommandBlock())
 	registerAll(allWallBanner())
 	registerAll(allStandingBanner())
+	registerAll(allShulkerBoxs())
 }
 
 func init() {
@@ -350,6 +351,9 @@ func init() {
 		world.RegisterItem(v.(world.Item))
 	}
 	for _, v := range allStandingBanner() {
+		world.RegisterItem(v.(world.Item))
+	}
+	for _, v := range allShulkerBoxs() {
 		world.RegisterItem(v.(world.Item))
 	}
 }

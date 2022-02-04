@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-gl/mathgl/mgl64"
 	"main.go/plugins/chunk_mirror/server/block/cube"
-	"main.go/plugins/chunk_mirror/server/internal/nbtconv"
 	"main.go/plugins/chunk_mirror/server/item"
 	"main.go/plugins/chunk_mirror/server/item/inventory"
 	"main.go/plugins/chunk_mirror/server/world"
@@ -31,6 +30,7 @@ type Barrel struct {
 	inventory *inventory.Inventory
 	viewerMu  *sync.RWMutex
 	viewers   map[ContainerViewer]struct{}
+	nbt       map[string]interface{}
 }
 
 // NewBarrel creates a new initialised barrel. The inventory is properly initialised.
@@ -134,31 +134,36 @@ func (b Barrel) FlammabilityInfo() FlammabilityInfo {
 
 // DecodeNBT ...
 func (b Barrel) DecodeNBT(data map[string]interface{}) interface{} {
-	facing := b.Facing
-	//noinspection GoAssignmentToReceiver
-	b = NewBarrel()
-	b.Facing = facing
-	b.CustomName = nbtconv.MapString(data, "CustomName")
-	nbtconv.InvFromNBT(b.inventory, nbtconv.MapSlice(data, "Items"))
+	b.nbt = data
+	//facing := b.Facing
+	////noinspection GoAssignmentToReceiver
+	//b = NewBarrel()
+	//b.Facing = facing
+	//b.CustomName = nbtconv.MapString(data, "CustomName")
+	//nbtconv.InvFromNBT(b.inventory, nbtconv.MapSlice(data, "Items"))
 	return b
 }
 
 // EncodeNBT ...
 func (b Barrel) EncodeNBT() map[string]interface{} {
-	if b.inventory == nil {
-		facing, customName := b.Facing, b.CustomName
-		//noinspection GoAssignmentToReceiver
-		b = NewBarrel()
-		b.Facing, b.CustomName = facing, customName
+	if b.nbt == nil {
+		b.nbt = map[string]interface{}{}
 	}
-	m := map[string]interface{}{
-		"Items": nbtconv.InvToNBT(b.inventory),
-		"id":    "Barrel",
-	}
-	if b.CustomName != "" {
-		m["CustomName"] = b.CustomName
-	}
-	return m
+	//return c.nbt
+	//if b.inventory == nil {
+	//	facing, customName := b.Facing, b.CustomName
+	//	//noinspection GoAssignmentToReceiver
+	//	b = NewBarrel()
+	//	b.Facing, b.CustomName = facing, customName
+	//}
+	//m := map[string]interface{}{
+	//	"Items": nbtconv.InvToNBT(b.inventory),
+	//	"id":    "Barrel",
+	//}
+	//if b.CustomName != "" {
+	//	m["CustomName"] = b.CustomName
+	//}
+	return b.nbt
 }
 
 // EncodeBlock ...

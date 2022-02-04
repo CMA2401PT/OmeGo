@@ -141,6 +141,7 @@ const (
 	hashRepeatCommandBlock
 	hashWallBanner
 	hashStandingBanner
+	hashShulkerBox
 )
 
 func (Air) Hash() uint64 {
@@ -403,9 +404,6 @@ func (i IronOre) Hash() uint64 {
 	return hashIronOre | uint64(i.Type.Uint8())<<8
 }
 
-func (i ItemFrame) Hash() uint64 {
-	return hashItemFrame | uint64(i.Facing)<<8 | uint64(boolByte(i.Glowing))<<11
-}
 
 func (k Kelp) Hash() uint64 {
 	return hashKelp | uint64(k.Age)<<8

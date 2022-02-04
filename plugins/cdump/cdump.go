@@ -178,6 +178,7 @@ func (p *Processor) dump(SX, EX, SZ, EZ, offsetX, offsetZ int, provider *mcdb.Pr
 			fmt.Printf("CDump: Miss Chunk @ (%v %v)\n", pos.X(), pos.Z())
 		}
 	}
+	p.cm.WriteSpecial(provider)
 	fmt.Println("CDump Completed!")
 }
 

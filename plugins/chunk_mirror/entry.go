@@ -18,7 +18,6 @@ import (
 	block_define "main.go/world/define"
 	"os"
 	"path"
-	"reflect"
 	"sort"
 	"strconv"
 	"sync"
@@ -78,6 +77,7 @@ type ChunkMirror struct {
 	isWaiting           bool
 	waitLock            chan int
 	memoryChunks        map[reflect_world.ChunkPos]*reflect_world.ChunkData
+	special             *SpecialData
 }
 
 func (cm *ChunkMirror) loadCacheRecordFile() {
@@ -208,7 +208,14 @@ func (cm *ChunkMirror) New(config []byte) define.Plugin {
 	cm.cacheMap = make(map[reflect_world.ChunkPos]time.Time)
 	cm.providerMu = sync.Mutex{}
 	cm.loadCacheRecordFile()
+	cm.special = &SpecialData{}
 	return cm
+}
+
+func (cm *ChunkMirror) writeSpecial(provider *reflect_provider.Provider) {
+	fmt.Println("Mirror Chunk: Saving Map Info...")
+	cm.special.SaveMapDataToProvider(provider)
+	fmt.Println("Mirror Chunk: Saving Map Complete")
 }
 
 func (cm *ChunkMirror) Close() {
@@ -219,6 +226,7 @@ func (cm *ChunkMirror) Close() {
 		cm.saveChunk(pos, chunkData)
 	}
 	fmt.Println("Mirror Chunk: Saving Memory Cached Chunk Success!")
+	cm.writeSpecial(cm.WorldProvider)
 	cm.listenerDestroyFn()
 	err := cm.WorldProvider.Close()
 	if err != nil {
@@ -292,6 +300,7 @@ func (cm *ChunkMirror) Routine() {
 func (cm *ChunkMirror) Inject(taskIO *task.TaskIO, collaborationContext map[string]define.Plugin) define.Plugin {
 	cm.taskIO = taskIO
 	cm.InjectListener()
+	cm.special.New(cm)
 	return cm
 }
 
@@ -400,6 +409,7 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 		}
 	}
 	for blockPos, nbt := range c.BlockNBT() {
+
 		cubePos := cube.Pos{blockPos.X(), blockPos.Y(), blockPos.Z()}
 		auxBlockDefine := make(map[string]interface{})
 		auxBlockDefine["nbt"] = nbt
@@ -408,10 +418,6 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 		reflectRid = cm.blockReflectMapping[nbtBlockRid]
 		rb := cm.richBlocks.RichBlocks[nbtBlockRid]
 
-		//if strings.Contains(rb.Name, "frame") {
-		//	fmt.Println("!#", nbt)
-		//	fmt.Println("!>", rb)
-		//}
 		auxBlockDefine["richBlockInfo"] = struct {
 			Name             string
 			Val              int32
@@ -428,20 +434,24 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 
 		b, found := reflect_world.BlockByRuntimeID(reflectRid)
 		if !found {
-			fmt.Printf("Chunk Mirror: Nbt Block not found!  (%v -> %v) @ %v nbt: %v\n", nbtBlockRid, reflectRid, blockPos, nbt)
+			//fmt.Printf("Chunk Mirror: Nbt Block not found!  (%v -> %v) @ %v nbt: %v\n", nbtBlockRid, reflectRid, blockPos, nbt)
 			continue
 		}
 		if n, ok := b.(reflect_world.NBTer); ok {
 			// Encode the block entities and add the 'x', 'y' and 'z' tags to it.
 			b := n.DecodeNBT(nbt)
+			if itemFrame, ok := b.(reflect_block.ItemFrame); ok {
+				cm.special.CheckMapData(&itemFrame, pos)
+			}
+
 			wb, ok := b.(reflect_world.Block)
 			if !ok {
-				fmt.Printf("Chunk Mirror: Cannot Convert Nbt Block (%v -> %v) (%v) @ %v nbt: %v to a normal block! %v\n", nbtBlockRid, reflectRid, reflect.TypeOf(b), blockPos, nbt, b)
+				//fmt.Printf("Chunk Mirror: Cannot Convert Nbt Block (%v -> %v) (%v) @ %v nbt: %v to a normal block! %v\n", nbtBlockRid, reflectRid, reflect.TypeOf(b), blockPos, nbt, b)
 				continue
 			}
 			reflectChunkData.E[cubePos] = wb
 		} else {
-			fmt.Printf("Chunk Mirror: Block (%v -> %v) (%v) @ %v nbt=%v cannot be a Nbt Block! %v\n", nbtBlockRid, reflectRid, reflect.TypeOf(b), blockPos, nbt, b)
+			//fmt.Printf("Chunk Mirror: Block (%v -> %v) (%v) @ %v nbt=%v cannot be a Nbt Block! %v\n", nbtBlockRid, reflectRid, reflect.TypeOf(b), blockPos, nbt, b)
 		}
 	}
 	return reflectChunkData

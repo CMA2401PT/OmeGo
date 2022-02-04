@@ -7,7 +7,6 @@ import (
 	"main.go/plugins/chunk_mirror/server/block/cube"
 	"main.go/plugins/chunk_mirror/server/block/model"
 	"main.go/plugins/chunk_mirror/server/entity"
-	"main.go/plugins/chunk_mirror/server/internal/nbtconv"
 	"main.go/plugins/chunk_mirror/server/item"
 	"main.go/plugins/chunk_mirror/server/world"
 	"main.go/plugins/chunk_mirror/server/world/sound"
@@ -28,7 +27,13 @@ type ItemFrame struct {
 	// DropChance is the chance of the item dropping when the frame is broken. In vanilla, this is always 1.0.
 	DropChance float64
 	// Glowing makes the frame the glowing variant.
-	Glowing bool
+	Glowing            bool
+	item_frame_map_bit uint8
+	nbt                map[string]interface{}
+}
+
+func (i ItemFrame) Hash() uint64 {
+	return hashItemFrame | uint64(i.Facing)<<8 | uint64(boolByte(i.Glowing))<<11 | uint64(i.item_frame_map_bit)<<12
 }
 
 // Activate ...
@@ -108,33 +113,34 @@ func (i ItemFrame) EncodeBlock() (name string, properties map[string]interface{}
 	}
 	return name, map[string]interface{}{
 		"facing_direction":     int32(i.Facing.Opposite()),
-		"item_frame_map_bit":   uint8(0), // TODO: When maps are added, set this to true if the item is a map.
-		"item_frame_photo_bit": uint8(0), // Only implemented in Education Edition.
+		"item_frame_map_bit":   uint8(i.item_frame_map_bit), // TODO: When maps are added, set this to true if the item is a map.
+		"item_frame_photo_bit": uint8(0),                    // Only implemented in Education Edition.
 	}
 }
 
 // DecodeNBT ...
 func (i ItemFrame) DecodeNBT(data map[string]interface{}) interface{} {
-	i.DropChance = float64(nbtconv.MapFloat32(data, "ItemDropChance"))
-	i.Rotations = int(nbtconv.MapByte(data, "ItemRotation"))
-	i.Item = nbtconv.MapItem(data, "Item")
+	i.nbt = data
+	//i.DropChance = float64(nbtconv.MapFloat32(data, "ItemDropChance"))
+	//i.Rotations = int(nbtconv.MapByte(data, "ItemRotation"))
+	//i.Item = nbtconv.MapItem(data, "Item")
 	return i
 }
 
 // EncodeNBT ...
 func (i ItemFrame) EncodeNBT() map[string]interface{} {
-	m := map[string]interface{}{
-		"ItemDropChance": float32(i.DropChance),
-		"ItemRotation":   uint8(i.Rotations),
-		"id":             "ItemFrame",
-	}
-	if i.Glowing {
-		m["id"] = "GlowItemFrame"
-	}
-	if !i.Item.Empty() {
-		m["Item"] = nbtconv.WriteItem(i.Item, true)
-	}
-	return m
+	//m := map[string]interface{}{
+	//	"ItemDropChance": float32(i.DropChance),
+	//	"ItemRotation":   uint8(i.Rotations),
+	//	"id":             "ItemFrame",
+	//}
+	//if i.Glowing {
+	//	m["id"] = "GlowItemFrame"
+	//}
+	//if !i.Item.Empty() {
+	//	m["Item"] = nbtconv.WriteItem(i.Item, true)
+	//}
+	return i.nbt
 }
 
 // Pick returns the item that is picked when the block is picked.
@@ -167,8 +173,10 @@ func (i ItemFrame) NeighbourUpdateTick(pos, _ cube.Pos, w *world.World) {
 // allItemFrames ...
 func allItemFrames() (frames []world.Block) {
 	for _, f := range cube.Faces() {
-		frames = append(frames, ItemFrame{Facing: f, Glowing: true})
-		frames = append(frames, ItemFrame{Facing: f, Glowing: false})
+		for m := uint8(0); m <= uint8(1); m++ {
+			frames = append(frames, ItemFrame{item_frame_map_bit: m, Facing: f, Glowing: true})
+			frames = append(frames, ItemFrame{item_frame_map_bit: m, Facing: f, Glowing: false})
+		}
 	}
 	return
 }

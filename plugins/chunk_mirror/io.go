@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"main.go/plugins/chunk_mirror/server/block/cube"
 	reflect_world "main.go/plugins/chunk_mirror/server/world"
+	reflect_provider "main.go/plugins/chunk_mirror/server/world/mcdb"
 	"time"
 )
 
@@ -42,6 +43,12 @@ func blockPosFromNBT(data map[string]interface{}) cube.Pos {
 	y, _ := yInterface.(int32)
 	z, _ := zInterface.(int32)
 	return cube.Pos{int(x), int(y), int(z)}
+}
+
+func (cm *ChunkMirror) WriteSpecial(provider *reflect_provider.Provider) {
+	cm.providerMu.Lock()
+	defer cm.providerMu.Unlock()
+	cm.writeSpecial(provider)
 }
 
 func (cm *ChunkMirror) getMemoryChunk(pos reflect_world.ChunkPos) (cd *reflect_world.ChunkData, hasK bool) {
