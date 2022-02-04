@@ -1,4 +1,6 @@
 data
 config.json
+*.json
+*yaml
 *.exe
 .idea
