@@ -41,8 +41,9 @@ type HoldedStatus struct {
 	cmdEnabled       bool
 	cmdFBWaiter      *statusWaiter
 	cmdFB            bool
-	chunkCache       map[world.ChunkPos]*packet.LevelChunk
-	chunkLock        sync.Mutex
+	// 以下两个即将被弃用，以后都使用 mirror_chunk 核心插件作为区块缓存提供者
+	chunkCache map[world.ChunkPos]*packet.LevelChunk
+	chunkLock  sync.Mutex
 }
 
 func newHolder() *HoldedStatus {
@@ -96,6 +97,7 @@ func (s *HoldedStatus) CmdFB() bool {
 //	cacheRangeSetted bool
 //}
 
+// 以下3个即将被弃用，以后都使用 mirror_chunk 核心插件作为区块缓存提供者
 func (s *HoldedStatus) AccessChunkCache(fn func(map[world.ChunkPos]*packet.LevelChunk)) {
 	s.chunkLock.Lock()
 	defer s.chunkLock.Unlock()

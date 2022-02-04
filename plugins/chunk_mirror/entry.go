@@ -56,24 +56,26 @@ type ChunkMirror struct {
 	WorldMax             int    `yaml:"world_max"`
 	FarPointX            int    `yaml:"far_point_x"`
 	FarPointZ            int    `yaml:"far_point_z"`
-	NeteaseAirRID        int
-	MirrorAirRID         uint32
-	richBlocks           *RichBlocks
-	worldRange           cube.Range
-	taskIO               *task.TaskIO
-	WorldProvider        *reflect_provider.Provider
-	blockReflectMapping  []uint32
-	providerMu           sync.Mutex
-	cacheRecordFile      string
-	listenerDestroyFn    func()
-	cacheMap             map[reflect_world.ChunkPos]time.Time
-	expiredTime          time.Time
-	doCache              bool
-	ChunkListeners       map[*ChunkListener]*ChunkListener
-	lastChunkTime        time.Time
-	chunkReqs            chan *ChunkReq
-	isWaiting            bool
-	waitLock             chan int
+	//MinUpdateSecond      int    `yaml:"min_update_second"`
+	NeteaseAirRID       int
+	MirrorAirRID        uint32
+	richBlocks          *RichBlocks
+	worldRange          cube.Range
+	taskIO              *task.TaskIO
+	WorldProvider       *reflect_provider.Provider
+	blockReflectMapping []uint32
+	providerMu          sync.Mutex
+	cacheRecordFile     string
+	listenerDestroyFn   func()
+	cacheMap            map[reflect_world.ChunkPos]time.Time
+	expiredTime         time.Time
+	doCache             bool
+	ChunkListeners      map[*ChunkListener]*ChunkListener
+	lastChunkTime       time.Time
+	chunkReqs           chan *ChunkReq
+	isWaiting           bool
+	waitLock            chan int
+	memoryChunks        map[reflect_world.ChunkPos]*reflect_world.ChunkData
 }
 
 func (cm *ChunkMirror) loadCacheRecordFile() {
@@ -146,8 +148,12 @@ func (cm *ChunkMirror) New(config []byte) define.Plugin {
 	cm.FarPointX = 100000
 	cm.FarPointZ = 100000
 
+	//cm.MinUpdateSecond = 60
+
 	cm.isWaiting = false
 	cm.waitLock = make(chan int)
+
+	cm.memoryChunks = make(map[reflect_world.ChunkPos]*reflect_world.ChunkData)
 
 	err = yaml.Unmarshal(config, &cm)
 	if err != nil {
@@ -185,7 +191,7 @@ func (cm *ChunkMirror) New(config []byte) define.Plugin {
 	cm.WorldProvider, err = reflect_provider.New(cm.WorldDir, reflect_world.Overworld)
 	cm.WorldProvider.D.LevelName = "MirrorWorld"
 	if err != nil {
-		panic(fmt.Sprintf("Chunk Mirror: Load/Create Chunk @ %v fail (%v)", cm.WorldDir, err))
+		panic(fmt.Sprintf("Chunk Mirror: Load/Create World @ %v fail (%v)", cm.WorldDir, err))
 	}
 	cm.cacheRecordFile = path.Join(cm.WorldDir, "cache_log.txt")
 	cm.cacheMap = make(map[reflect_world.ChunkPos]time.Time)
@@ -197,11 +203,17 @@ func (cm *ChunkMirror) New(config []byte) define.Plugin {
 func (cm *ChunkMirror) Close() {
 	cm.providerMu.Lock()
 	defer cm.providerMu.Unlock()
+	fmt.Println("Mirror Chunk: Saving Memory Cached Chunk")
+	for pos, chunkData := range cm.memoryChunks {
+		cm.saveChunk(pos, chunkData)
+	}
+	fmt.Println("Mirror Chunk: Saving Memory Cached Chunk Success!")
 	cm.listenerDestroyFn()
 	err := cm.WorldProvider.Close()
 	if err != nil {
 		fmt.Printf("Chunk Mirror: Close WorldProvider Fail (%v)\n", err)
 	}
+
 	cm.dumpCacheRecordFile()
 }
 
@@ -222,31 +234,39 @@ func (cm *ChunkMirror) handleOneReq(req *ChunkReq) {
 			req.respChan <- cd
 			return
 		}
+		if !cm.isWaiting {
+			cm.waitLock = make(chan int)
+			cm.isWaiting = true
+		}
 		select {
 		case <-cm.waitLock:
+			break
 			//fmt.Printf("New Chunk Arrival")
 		case <-time.After(time.Second):
 			if req.hasTimeOut {
+				fmt.Printf("Mirror-Chunk: Activate Require Chunk Time Out!\n")
 				if time.Now().After(req.deadlineTime) {
 					close(req.respChan)
 					return
 				}
-			} else {
-				if !cm.isWaiting {
-					cm.waitLock = make(chan int)
-					cm.isWaiting = true
-				}
-				retryTime += 1
-				if retryTime > 16 {
-					retryTime = 16
-				}
-				fmt.Printf("Retry (%v) -> step1. Move Far @ (%v,%v)\n", retryTime, Fx, Fz)
-				cm.taskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", Fx, Fz))
-				time.Sleep(time.Duration(retryTime) * 500 * time.Millisecond)
-				fmt.Printf("Retry (%v) -> step2. Move Back @ (%v,%v)\n", retryTime, req.X*16, req.Z*16)
-				cm.taskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", req.X*16, req.Z*16))
-				fmt.Printf("Retry (%v) -> step3. Delay (%v,%v)\n")
 			}
+			if !cm.isWaiting {
+				cm.waitLock = make(chan int)
+				cm.isWaiting = true
+			}
+			retryTime += 1
+			if retryTime > 16 {
+				retryTime = 16
+			}
+			fmt.Printf("Retry (%v) -> step1. Move Far @ (%v,%v)\n", retryTime, Fx, Fz)
+			cm.taskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", Fx, Fz))
+			cm.doCache = false
+			time.Sleep(time.Duration(retryTime) * 500 * time.Millisecond)
+			fmt.Printf("Retry (%v) -> step2. Move Back @ (%v,%v)\n", retryTime, req.X*16, req.Z*16)
+			cm.taskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", req.X*16, req.Z*16))
+			cm.doCache = true
+			fmt.Printf("Retry (%v) -> step3. Delay \n", retryTime)
+			time.Sleep(time.Duration(retryTime) * 500 * time.Millisecond)
 		}
 	}
 }
@@ -277,12 +297,10 @@ func (cm *ChunkMirror) InjectListener() {
 func (cm *ChunkMirror) hasCache(pos reflect_world.ChunkPos, expireTime ...time.Time) bool {
 	T, hasK := cm.cacheMap[pos]
 	if hasK {
-		if len(expireTime) == 0 && T.After(cm.expiredTime) {
-			return true
+		if len(expireTime) == 0 {
+			return T.After(cm.expiredTime)
 		}
-		if T.After(expireTime[0]) {
-			return true
-		}
+		return T.After(expireTime[0])
 	}
 	return false
 }
@@ -378,6 +396,11 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 		nbtBlockRid := c.RuntimeID(uint8(blockPos.X()), int16(blockPos.Y()), uint8(blockPos.Z()), 0)
 		reflectRid = cm.blockReflectMapping[nbtBlockRid]
 		rb := cm.richBlocks.RichBlocks[nbtBlockRid]
+		//fmt.Println(nbt)
+		//if strings.Contains(rb.Name, "command_block") {
+		//	fmt.Printf("Handle Command Block!")
+		//	fmt.Println(nbt)
+		//}
 		auxBlockDefine["richBlockInfo"] = struct {
 			Name             string
 			Val              int32
@@ -423,11 +446,31 @@ func (cm *ChunkMirror) getListeners(X, Z int) []ChunkListenerCb {
 	return cbs
 }
 
+func (cm *ChunkMirror) memory2File() {
+	if len(cm.memoryChunks) > 2048 {
+		for len(cm.memoryChunks) > 1024 {
+			oldestPos := reflect_world.ChunkPos{}
+			oldestTime := time.Now()
+			for pos, _ := range cm.memoryChunks {
+				T := cm.cacheMap[pos]
+				if T.Before(oldestTime) {
+					oldestTime = T
+					oldestPos = pos
+				}
+			}
+			fmt.Println("Chunk-Mirror: Write Back ", oldestPos)
+			cm.saveChunk(oldestPos, cm.memoryChunks[oldestPos])
+			delete(cm.memoryChunks, oldestPos)
+		}
+	}
+
+}
+
 func (cm *ChunkMirror) onNewChunk(p *packet.LevelChunk) {
 	cm.lastChunkTime = time.Now()
 	listeners := cm.getListeners(int(p.ChunkX), int(p.ChunkZ))
 	if !cm.doCache && len(listeners) == 0 && !cm.isWaiting {
-		fmt.Printf("Skip Chunk @ (%v,%v)", p.ChunkX, p.ChunkZ)
+		fmt.Printf("Skip Chunk @ (%v,%v)\n", p.ChunkX, p.ChunkZ)
 		return
 	}
 	c, err := chunk.NetworkDecode(block_define.AirRuntimeId, p.RawPayload, int(p.SubChunkCount))
@@ -443,7 +486,6 @@ func (cm *ChunkMirror) onNewChunk(p *packet.LevelChunk) {
 
 	if cm.doCache || cm.isWaiting {
 		cm.providerMu.Lock()
-		cm.saveChunk(pos, reflectChunkData)
 
 		if cm.hasCache(pos) {
 			fmt.Printf("Chunk Mirror: Update Cache Chunk (%v,%v)\n", chunkX, chunkZ)
@@ -451,10 +493,12 @@ func (cm *ChunkMirror) onNewChunk(p *packet.LevelChunk) {
 			fmt.Printf("Chunk Mirror: New Cache Chunk (%v,%v)\n", chunkX, chunkZ)
 		}
 		cm.cacheMap[pos] = time.Now()
+		cm.memoryChunks[pos] = reflectChunkData
 		if cm.isWaiting {
 			cm.isWaiting = false
 			close(cm.waitLock)
 		}
+		cm.memory2File()
 		cm.providerMu.Unlock()
 		//loadedChunk, err := cm.GetCachedChunk(pos)
 		//if err != nil {

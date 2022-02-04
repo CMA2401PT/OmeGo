@@ -136,6 +136,9 @@ const (
 	hashWoodStairs
 	hashWoodTrapdoor
 	hashWool
+	hashCommandBlock
+	hashChainCommandBlock
+	hashRepeatCommandBlock
 )
 
 func (Air) Hash() uint64 {

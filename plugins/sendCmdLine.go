@@ -50,7 +50,6 @@ func (o *SendCmdLine) onNewText(fromPlugin string, prefix string, data string) (
 		// fall through
 		return false, data
 	}
-
 }
 
 func (o *SendCmdLine) Inject(taskIO *task.TaskIO, collaborationContext map[string]define.Plugin) define.Plugin {

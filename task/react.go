@@ -149,6 +149,7 @@ func (taskIO *TaskIO) newPacketFn(pk packet.Packet) {
 			cb(p)
 		}
 	case *packet.LevelChunk:
+		// 这块即将被弃用，以后都使用 mirror_chunk 核心插件作为区块缓存提供者
 		if taskIO.doCacheChunks {
 			//fmt.Printf("New Chunk Arrival @ (%d,%d)\n", p.ChunkX, p.ChunkZ)
 			//taskIO.Status.AddChunk(p)

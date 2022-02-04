@@ -44,11 +44,22 @@ func blockPosFromNBT(data map[string]interface{}) cube.Pos {
 	return cube.Pos{int(x), int(y), int(z)}
 }
 
+func (cm *ChunkMirror) getMemoryChunk(pos reflect_world.ChunkPos) (cd *reflect_world.ChunkData, hasK bool) {
+	cm.providerMu.Lock()
+	defer cm.providerMu.Unlock()
+	data, hasK := cm.memoryChunks[pos]
+	return data, hasK
+}
+
 func (cm *ChunkMirror) GetCachedChunk(pos reflect_world.ChunkPos, expireTime ...time.Time) (cd *reflect_world.ChunkData, err error) {
 	cm.providerMu.Lock()
 	defer cm.providerMu.Unlock()
 	if !cm.hasCache(pos, expireTime...) {
 		return nil, fmt.Errorf("Chunk Mirror: Try Getting an non-cached Chunk")
+	}
+	cd, hasK := cm.memoryChunks[pos]
+	if hasK {
+		return cd, nil
 	}
 	c, e, err := cm.WorldProvider.LoadChunk(pos)
 	if err != nil {
