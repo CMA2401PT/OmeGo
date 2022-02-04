@@ -57,6 +57,7 @@ type ChunkMirror struct {
 	WorldMax             int    `yaml:"world_max"`
 	FarPointX            int    `yaml:"far_point_x"`
 	FarPointZ            int    `yaml:"far_point_z"`
+	CacheLevel           int    `yaml:"cache_level"`
 	//MinUpdateSecond      int    `yaml:"min_update_second"`
 	NeteaseAirRID       int
 	MirrorAirRID        uint32
@@ -148,6 +149,7 @@ func (cm *ChunkMirror) New(config []byte) define.Plugin {
 
 	cm.FarPointX = 100000
 	cm.FarPointZ = 100000
+	cm.CacheLevel = 12
 
 	//cm.MinUpdateSecond = 60
 
@@ -164,6 +166,14 @@ func (cm *ChunkMirror) New(config []byte) define.Plugin {
 	cm.chunkReqs = make(chan *ChunkReq, 4)
 	richBlocks := RichBlocks{}
 	err = json.Unmarshal(richBlocksData, &richBlocks)
+	if cm.CacheLevel > 16 {
+		cm.CacheLevel = 16
+		fmt.Println("Chunk-Mirror: Cache Level too large, turn back to 16")
+	} else if cm.CacheLevel < 11 {
+		cm.CacheLevel = 11
+		fmt.Println("Chunk-Mirror: Cache Level too small, turn back to 11")
+	}
+	fmt.Printf("Chunk-Mirror: Cache Level=%v, maximum cache %v chunks in memory", cm.CacheLevel, 1<<(cm.CacheLevel+1))
 	cm.richBlocks = &richBlocks
 	if err != nil {
 		panic("Chunk Mirror: cannot read remapping info")
@@ -397,10 +407,10 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 		nbtBlockRid := c.RuntimeID(uint8(blockPos.X()), int16(blockPos.Y()), uint8(blockPos.Z()), 0)
 		reflectRid = cm.blockReflectMapping[nbtBlockRid]
 		rb := cm.richBlocks.RichBlocks[nbtBlockRid]
-		//fmt.Println(nbt)
-		//if strings.Contains(rb.Name, "command_block") {
-		//	fmt.Printf("Handle Command Block!")
-		//	fmt.Println(nbt)
+
+		//if strings.Contains(rb.Name, "frame") {
+		//	fmt.Println("!#", nbt)
+		//	fmt.Println("!>", rb)
 		//}
 		auxBlockDefine["richBlockInfo"] = struct {
 			Name             string
@@ -462,7 +472,7 @@ func (s SortableTimes) Swap(i, j int) {
 }
 
 func (cm *ChunkMirror) memory2File() {
-	if len(cm.memoryChunks) > 4096 {
+	if len(cm.memoryChunks) > (1 << (cm.CacheLevel + 1)) {
 		cacheList := make(SortableTimes, 0)
 		for pos, _ := range cm.memoryChunks {
 			T := cm.cacheMap[pos]
@@ -472,7 +482,7 @@ func (cm *ChunkMirror) memory2File() {
 			})
 		}
 		sort.Sort(cacheList)
-		for i := 0; i < 2048; i++ {
+		for i := 0; i < 1<<cm.CacheLevel; i++ {
 			pair := cacheList[i]
 			fmt.Printf("Chunk-Mirror: Write Back %v %v\n", pair.p, pair.t)
 			cm.saveChunk(pair.p, cm.memoryChunks[pair.p])
