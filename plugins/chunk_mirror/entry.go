@@ -19,6 +19,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -446,21 +447,36 @@ func (cm *ChunkMirror) getListeners(X, Z int) []ChunkListenerCb {
 	return cbs
 }
 
+type timePosPair struct {
+	p reflect_world.ChunkPos
+	t time.Time
+}
+type SortableTimes []*timePosPair
+
+func (s SortableTimes) Len() int           { return len(s) }
+func (s SortableTimes) Less(i, j int) bool { return s[i].t.Before(s[j].t) }
+func (s SortableTimes) Swap(i, j int) {
+	t := s[i]
+	s[i] = s[j]
+	s[j] = t
+}
+
 func (cm *ChunkMirror) memory2File() {
-	if len(cm.memoryChunks) > 2048 {
-		for len(cm.memoryChunks) > 1024 {
-			oldestPos := reflect_world.ChunkPos{}
-			oldestTime := time.Now()
-			for pos, _ := range cm.memoryChunks {
-				T := cm.cacheMap[pos]
-				if T.Before(oldestTime) {
-					oldestTime = T
-					oldestPos = pos
-				}
-			}
-			fmt.Println("Chunk-Mirror: Write Back ", oldestPos)
-			cm.saveChunk(oldestPos, cm.memoryChunks[oldestPos])
-			delete(cm.memoryChunks, oldestPos)
+	if len(cm.memoryChunks) > 4096 {
+		cacheList := make(SortableTimes, 0)
+		for pos, _ := range cm.memoryChunks {
+			T := cm.cacheMap[pos]
+			cacheList = append(cacheList, &timePosPair{
+				p: pos,
+				t: T,
+			})
+		}
+		sort.Sort(cacheList)
+		for i := 0; i < 2048; i++ {
+			pair := cacheList[i]
+			fmt.Printf("Chunk-Mirror: Write Back %v %v\n", pair.p, pair.t)
+			cm.saveChunk(pair.p, cm.memoryChunks[pair.p])
+			delete(cm.memoryChunks, pair.p)
 		}
 	}
 
