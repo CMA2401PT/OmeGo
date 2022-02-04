@@ -155,6 +155,8 @@ func init() {
 	registerAll(allWood())
 	registerAll(allChains())
 	registerAll(allCommandBlock())
+	registerAll(allWallBanner())
+	registerAll(allStandingBanner())
 }
 
 func init() {
@@ -342,6 +344,12 @@ func init() {
 		world.RegisterItem(NetherBricks{Type: t})
 	}
 	for _, v := range allCommandBlock() {
+		world.RegisterItem(v.(world.Item))
+	}
+	for _, v := range allWallBanner() {
+		world.RegisterItem(v.(world.Item))
+	}
+	for _, v := range allStandingBanner() {
 		world.RegisterItem(v.(world.Item))
 	}
 }

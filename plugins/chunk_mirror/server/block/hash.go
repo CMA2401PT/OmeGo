@@ -139,6 +139,8 @@ const (
 	hashCommandBlock
 	hashChainCommandBlock
 	hashRepeatCommandBlock
+	hashWallBanner
+	hashStandingBanner
 )
 
 func (Air) Hash() uint64 {
