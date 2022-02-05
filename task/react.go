@@ -116,13 +116,51 @@ func (cbs *CallBacks) activatePacketCallbacks(pk packet.Packet) {
 }
 
 func (taskIO *TaskIO) newPacketFn(pk packet.Packet) {
-	//id := pk.ID()
+	id := pk.ID()
 	//_, hasK := taskIO.packetTypes[id]
 	//if !hasK {
 	//	//taskIO.packetTypes[id] = pk
 	//	//fmt.Println(id)
 	//	//	//fmt.Println(pk)
 	//}
+	switch id {
+	case 143:
+		//IDNetworkSettings
+		break
+	case 50:
+		//IDInventorySlot
+		break
+	case 63:
+		//IDPlayerList
+		break
+	case 10:
+		//IDSetTime
+		break
+	case 60:
+		//IDSetDifficulty
+		break
+	case 59:
+		//IDSetCommandsEnabled
+		break
+	case 55:
+		//IDAdventureSettings
+		break
+	case 72:
+		//IDGameRulesChanged
+		break
+	case 122:
+		// IDBiomeDefinitionList
+		break
+	case 119:
+		//IDAvailableActorIdentifiers
+		break
+	case 160:
+		//IDPlayerFog
+		break
+	case 29:
+		//IDUpdateAttributes
+	}
+	fmt.Println(id)
 	//if id != 143 && id != 49 && id != 58 && id != 111 && id != 121 && id != 40 && id != 19 && id != 27 && id != 39 {
 	//	fmt.Println(id)
 	//}

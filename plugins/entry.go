@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"main.go/plugins/WorldMirror"
 	"main.go/plugins/cdump"
 	"main.go/plugins/chunk_mirror"
 	"main.go/plugins/define"
@@ -26,6 +27,7 @@ func Pool() map[string]func() define.Plugin {
 		pool["chunk_mirror"] = func() define.Plugin { return &chunk_mirror.ChunkMirror{} }
 		pool["fast_builder"] = func() define.Plugin { return &fastbuilder.FastBuilder{} }
 		pool["cdump"] = func() define.Plugin { return &cdump.CDump{} }
+		pool["world_mirror"] = func() define.Plugin { return &WorldMirror.WorldMirror{} }
 
 		isInit = true
 	}
