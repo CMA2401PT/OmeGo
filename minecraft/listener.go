@@ -11,8 +11,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/sandertv/go-raknet"
 	"go.uber.org/atomic"
+	"main.go/go_raknet"
 	"main.go/minecraft/protocol"
 	"main.go/minecraft/protocol/packet"
 	"main.go/minecraft/resource"

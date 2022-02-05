@@ -8,7 +8,7 @@ import (
 	"crypto/ecdsa"
 
 	"github.com/google/uuid"
-	"github.com/sandertv/go-raknet"
+	"main.go/go_raknet"
 	"main.go/minecraft/internal/resource"
 
 	//"main.go/minecraft/auth"

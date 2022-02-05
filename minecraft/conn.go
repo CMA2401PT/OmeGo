@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sandertv/go-raknet"
 	"go.uber.org/atomic"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
+	"main.go/go_raknet"
 	"main.go/minecraft/internal"
 	"main.go/minecraft/protocol"
 	"main.go/minecraft/protocol/login"

@@ -16,9 +16,7 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.2.0
 	github.com/mattn/go-sqlite3 v1.14.11 // indirect
 	github.com/muhammadmuzzammil1998/jsonc v0.0.0-20211230184646-baf1f7156737 // indirect
-	github.com/pterm/pterm v0.12.29
 	github.com/robertkrimen/otto v0.0.0-20210614181706-373ff5438452 // indirect
-	github.com/sandertv/go-raknet v1.9.1
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
 	golang.org/x/net v0.0.0-20220107192237-5cfca573fb4d // indirect
