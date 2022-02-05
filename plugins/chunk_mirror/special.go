@@ -59,8 +59,9 @@ func (s *SpecialData) handledMapItemData(p packet.Packet) {
 	_, hasK := s.maps[uuid]
 	if !hasK {
 		fmt.Printf("Get Map from Unknown %v\n", uuid)
+		return
 	} else {
-		fmt.Printf("Get Map Data of %v\n", uuid)
+		//fmt.Printf("Get Map Data of %v\n", uuid)
 	}
 	//if pk.Height != 0 {
 	//	fmt.Println(pk)
@@ -101,6 +102,47 @@ func (s *SpecialData) SaveMapDataToProvider(provider *reflect_provider.Provider)
 			}
 		}
 	}
+}
+
+func (s *SpecialData) CheckBeeData(obj *reflect_block.BeeContainer, pos reflect_world.ChunkPos) {
+	nbt := obj.EncodeNBT()
+	//sth := s.hasPath(nbt, []string{"Occupants"})
+	//if sth == nil {
+	//	return
+	//}
+	//_nbt, ok := nbt["Occupants"].([]interface{})
+	//if !ok {
+	//	nbt["Occupants"] = make([]interface{}, 0)
+	//	obj.DecodeNBT(nbt)
+	//	return
+	//}
+	//fail := false
+	//for _, bee := range _nbt {
+	//	_beeNbt, ok := bee.(map[string]interface{})
+	//	if !ok {
+	//		fail = true
+	//		break
+	//	}
+	//	_beeNbtSaveData := _beeNbt["SaveData"]
+	//	__beeNbtSaveData, ok := _beeNbtSaveData.(map[string]interface{})
+	//	if !ok {
+	//		fail = true
+	//		break
+	//	}
+	//	//_beeNbt["TicksLeftToStay"] = 20
+	//	//uuid, ok := __beeNbtSaveData["UniqueID"].(int64)
+	//	//if !ok {
+	//	//	fail = true
+	//	//	break
+	//	//}
+	//	//fmt.Println(uuid)
+	//}
+	//if fail {
+	//	nbt["Occupants"] = make([]interface{}, 0)
+	//	obj.DecodeNBT(nbt)
+	//	return
+	//}
+	obj.DecodeNBT(nbt)
 }
 
 func (s *SpecialData) CheckMapData(obj *reflect_block.ItemFrame, pos reflect_world.ChunkPos) {

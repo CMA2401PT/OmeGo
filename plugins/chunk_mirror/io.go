@@ -113,7 +113,7 @@ func (cm *ChunkMirror) GetCachedChunk(pos reflect_world.ChunkPos, expireTime ...
 func (cm *ChunkMirror) IsBusy(i ...time.Duration) bool {
 	if len(i) == 0 {
 		// by default, idle after 1 sec
-		return cm.lastChunkTime.Add(time.Second).After(time.Now())
+		return cm.lastChunkTime.Add(time.Millisecond * 300).After(time.Now())
 	} else {
 		return cm.lastChunkTime.Add(i[0]).After(time.Now())
 	}

@@ -142,6 +142,7 @@ const (
 	hashWallBanner
 	hashStandingBanner
 	hashShulkerBox
+	hashBeeContainer
 )
 
 func (Air) Hash() uint64 {

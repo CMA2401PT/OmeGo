@@ -238,8 +238,9 @@ func (cm *ChunkMirror) Close() {
 
 func (cm *ChunkMirror) handleOneReq(req *ChunkReq) {
 	fmt.Printf("Mirror-Chunk: Activate Require Chunk @ (%v,%v)\n", req.X, req.Z)
-	cm.taskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", req.X*16, req.Z*16))
-	time.Sleep(time.Second * 1)
+	cm.taskIO.SendCmd(fmt.Sprintf("tp @s %d 127 %d", (req.X+3)*16, (req.Z+3)*16))
+	time.Sleep(time.Millisecond * 500)
+	<-cm.WaitIdle(time.Millisecond * 200)
 	retryTime := 0
 	cacheAfter := req.AllowCacheAfter
 	Fx, Fz := req.FarPoint[0], req.FarPoint[1]
@@ -433,6 +434,13 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 		reflectChunkData.AuxNbtInfo[cubePos] = auxBlockDefine
 
 		b, found := reflect_world.BlockByRuntimeID(reflectRid)
+		//if strings.Contains(rb.Name, "bee_nest") {
+		//	fmt.Println(nbt)
+		//}
+		//if strings.Contains(rb.Name, "beehive") {
+		//	fmt.Println(nbt)
+		//}
+		//fmt.Println(rb.Name)
 		if !found {
 			//fmt.Printf("Chunk Mirror: Nbt Block not found!  (%v -> %v) @ %v nbt: %v\n", nbtBlockRid, reflectRid, blockPos, nbt)
 			continue
@@ -442,6 +450,9 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 			b := n.DecodeNBT(nbt)
 			if itemFrame, ok := b.(reflect_block.ItemFrame); ok {
 				cm.special.CheckMapData(&itemFrame, pos)
+			}
+			if beeContainer, ok := b.(reflect_block.BeeContainer); ok {
+				cm.special.CheckBeeData(&beeContainer, pos)
 			}
 
 			wb, ok := b.(reflect_world.Block)

@@ -27,10 +27,10 @@ func (p *Processor) process(cmd []string) {
 	startStr := cmd[1]
 	endStr := cmd[2]
 	dstStr := cmd[3]
-	name := "#NONAME#"
-	if len(cmd) > 4 {
-		name = cmd[4]
-	}
+	name := "#NONAME_STRUCTURE#"
+	//if len(cmd) > 4 {
+	//	name = cmd[4]
+	//}
 
 	startPosStr := strings.Split(startStr, ":")
 	if len(startPosStr) != 2 {
@@ -58,67 +58,109 @@ func (p *Processor) process(cmd []string) {
 	if err != nil {
 		fmt.Println("End [Z] format error")
 	}
+
+	if startX > endX {
+		t := startX
+		startX = endX
+		endX = t
+	}
+	if startZ > endZ {
+		t := startZ
+		startZ = endZ
+		endZ = t
+	}
+
 	dstPosStr := strings.Split(dstStr, ":")
-	if len(dstPosStr) != 3 && len(dstPosStr) != 1 {
+	if len(dstPosStr) != 2 && len(dstPosStr) != 1 {
 		fmt.Println("Dst format error")
 		return
 	}
 	dstDir := dstPosStr[0]
-	dstX, dstZ := startX, startZ
-	if len(dstPosStr) == 3 {
-		dstX, err = strconv.Atoi(dstPosStr[1])
-		if err != nil {
-			fmt.Println("Dst [X] format error")
-		}
-		dstZ, err = strconv.Atoi(dstPosStr[2])
-		if err != nil {
-			fmt.Println("Dst [Z] format error")
-		}
+	if len(dstPosStr) == 2 {
+		name = dstPosStr[1]
 	}
+	//dstX, dstZ := startX, startZ
+	//if len(dstPosStr) == 3 {
+	//	dstX, err = strconv.Atoi(dstPosStr[1])
+	//	if err != nil {
+	//		fmt.Println("Dst [X] format error")
+	//	}
+	//	dstZ, err = strconv.Atoi(dstPosStr[2])
+	//	if err != nil {
+	//		fmt.Println("Dst [Z] format error")
+	//	}
+	//}
 	provider, err := mcdb.New(dstDir, reflect_world.Overworld)
+	provider.D.LevelName = provider.D.LevelName + "_structure_[" + name + "]"
 	if err != nil {
 		fmt.Printf("CDump: Load/Create World @ %v fail (%v)\n", dstDir, err)
 		return
 	}
 
-	operateLogFile := path.Join(dstDir, "operate_log.txt")
+	operateLogFile := path.Join(dstDir, "Structure.txt")
 	logFile, err := os.OpenFile(operateLogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 644)
 	if err != nil && os.IsNotExist(err) {
 		fmt.Printf(fmt.Sprintf("CDump: cannot create or append operate log %v (%v)", operateLogFile, err))
 		return
 	}
-	startX, startZ, endX, endZ, dstX, dstZ = startX>>4, startZ>>4, endX>>4, endZ>>4, dstX>>4, dstZ>>4
-	offsetX, offsetZ := dstX-startX, dstZ-startZ
-	var SX, EX, SZ, EZ int
-	if startX > endX {
-		SX = endX
-		EX = startX
-	} else {
-		EX = endX
-		SX = startX
-	}
-	if startZ > endZ {
-		SZ = endZ
-		EZ = startZ
-	} else {
-		EZ = endZ
-		SZ = startZ
+	startCX, startCZ, endCX, endCZ := startX/16-1, startZ/16-1, endX/16+1, endZ/16+1
+	startXR, startZR, endXR, endZR := startCX*16, startCZ*16, endCX*16+15, endCZ*16+15
+	fmt.Fprintf(logFile, "// Structure Dump Record: by cmd %v\n", cmd)
+	fmt.Fprintf(logFile, "// Structure Dump Record: dump begin @ time: %v\n", time.Now().Format("[2006-01-02-15:04:05]"))
+	fmt.Fprintf(logFile, "// Structure Dump Record: structure name is: %v\n", name)
+	fmt.Fprintf(logFile, "// Structure Dump Record: chunks to dump begin @ chunk [X=%v,Z=%v]\n", startCX, startCZ)
+	fmt.Fprintf(logFile, "// Structure Dump Record: chunks to dump end @ chunk [X=%v,Z=%v]\n", endCX, endCZ)
+	fmt.Fprintf(logFile, "// Structure Dump Record: blocks availabe in range [X=%v,Z=%v] ~ [X=%v,Z=%v]\n", startXR, startZR, endXR, endZR)
+	fmt.Fprintf(logFile, "// Structure Dump Record: load anchor point is [X=%v,Z=%v]\n", startX, startZ)
+	fmt.Fprintf(logFile, "#> Structure %v %v %v %v %v %v\n", name, startX, startZ, endX, endZ, time.Now().Format("[2006-01-02-15:04:05]"))
+	fmt.Fprintf(logFile, "// Begining Dump Log:\n")
+
+	dumpComplete := false
+
+	lineLogger := func(fmtS string, data ...interface{}) {
+		line := fmt.Sprintf(fmtS, data...)
+		fmt.Fprintf(logFile, "// log: %v %v\n", line, time.Now().Format("[2006-01-02-15:04:05]"))
+		fmt.Println(line)
 	}
 
-	fmt.Fprintf(logFile, "#Record %v %v:%v:%v %v:%v %v:%v [fmt NAME FILE:StartX:StratZ (FILE)EndX:EndZ (Origin):StartX:StartZ]\n", name, dstDir, (SX+offsetX)*16, (SZ+offsetZ)*16, (EX+offsetX+1)*16, (EZ+offsetZ+1)*16, SX*16, SZ*16)
-	fmt.Fprintf(logFile, "#CMD %v @ %v\n", cmd, time.Now().Format("[2006-01-02-15:04:05]"))
+	defer func() {
+		if dumpComplete {
+			fmt.Fprintf(logFile, "// Structure Dump Record: Dump Complete\n")
+		} else {
+			fmt.Fprintf(logFile, "// Structure Dump Record: Dump Not Complete\n")
+		}
+		fmt.Fprintf(logFile, "// Structure Dump Record: Record Terminate\n\n")
+		logFile.Close()
+		provider.Close()
+	}()
+	p.dump(startCX, endCX, startCZ, endCZ, 0, 0, provider, lineLogger)
+	dumpComplete = true
+	//offsetX, offsetZ := dstX-startX, dstZ-startZ
+	//var SX, EX, SZ, EZ int
+	//if startX > endX {
+	//	SX = endX
+	//	EX = startX
+	//} else {
+	//	EX = endX
+	//	SX = startX
+	//}
+	//if startZ > endZ {
+	//	SZ = endZ
+	//	EZ = startZ
+	//} else {
+	//	EZ = endZ
+	//	SZ = startZ
+	//}
 
-	logFile.Close()
-	p.dump(SX, EX, SZ, EZ, offsetX, offsetZ, provider)
-	provider.Close()
 }
 
-func (p *Processor) dump(SX, EX, SZ, EZ, offsetX, offsetZ int, provider *mcdb.Provider) {
+func (p *Processor) dump(SX, EX, SZ, EZ, offsetX, offsetZ int, provider *mcdb.Provider, lineLogger func(fmtS string, data ...interface{})) {
 	cachedStatus := make(map[reflect_world.ChunkPos]bool)
 
 	expiredTime := time.Now()
+	lineLogger("cdumping inital delay")
 	<-p.cm.WaitIdle(time.Second * 2)
-	fmt.Println("Begin Cdumping ...")
+	lineLogger("Begin cdumping ...")
 	rev := true
 	nextChunk := func(x, z int) {
 		pos := reflect_world.ChunkPos{int32(x + offsetX), int32(z + offsetZ)}
@@ -139,6 +181,7 @@ func (p *Processor) dump(SX, EX, SZ, EZ, offsetX, offsetZ int, provider *mcdb.Pr
 			cachedStatus[pos] = true
 			chunk_mirror.SaveChunk(reflect_world.ChunkPos{int32(x), int32(z)}, cd, provider)
 		} else {
+			lineLogger("Chunk acquire fail @ chunk %v %v", x, z)
 			cachedStatus[pos] = false
 		}
 	}
@@ -158,6 +201,7 @@ func (p *Processor) dump(SX, EX, SZ, EZ, offsetX, offsetZ int, provider *mcdb.Pr
 	}
 	for pos, succ := range cachedStatus {
 		if !succ {
+			lineLogger("Chunk reacquire @ %v", pos)
 			cd := <-p.cm.RequireChunk(&chunk_mirror.ChunkReq{
 				Dry:             false,
 				X:               int(pos.X()),
@@ -170,16 +214,19 @@ func (p *Processor) dump(SX, EX, SZ, EZ, offsetX, offsetZ int, provider *mcdb.Pr
 			if cd != nil {
 				chunk_mirror.SaveChunk(reflect_world.ChunkPos{pos.X() + int32(offsetX), pos.Z() + int32(offsetZ)}, cd, provider)
 				cachedStatus[pos] = true
+			} else {
+				lineLogger("Chunk reacquire fail @ %v", pos)
 			}
 		}
 	}
 	for pos, succ := range cachedStatus {
 		if !succ {
-			fmt.Printf("CDump: Miss Chunk @ (%v %v)\n", pos.X(), pos.Z())
+			lineLogger("CDump: Miss Chunk @ (%v %v)", pos.X(), pos.Z())
 		}
 	}
+	lineLogger("Writing Special Items")
 	p.cm.WriteSpecial(provider)
-	fmt.Println("CDump Completed!")
+	lineLogger("CDump Completed!")
 }
 
 // 主城区 cdump 19250:19250 20750:20750 cma

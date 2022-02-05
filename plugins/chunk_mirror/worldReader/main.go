@@ -78,7 +78,13 @@ func main() {
 	mapUUID := int64(-12884901881)
 	WorldProvider, _ := reflect_provider.New(WorldDir, reflect_world.Overworld)
 	//snapshot, _ := WorldProvider.DB.GetSnapshot()
-	//snapshot.NewIterator()
+	//iter := snapshot.NewIterator(nil, nil)
+	//for iter.Next() {
+	//	name := string(iter.Key()[:])
+	//	fmt.Println(name)
+	//}
+	//beeUUid := -25769803767
+	//WorldProvider.DB.Get()
 	//fmt.Println(snapshot)
 	//sth, err := WorldProvider.DB.Get([]byte("map"), nil)
 	//if err != nil {
@@ -98,11 +104,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(m)
+	//fmt.Println(m)
 	err = m.Save(WorldProvider)
 	if err != nil {
 		panic(err)
 	}
+	Entity, _ := WorldProvider.LoadEntities(reflect_world.ChunkPos{0, 0})
+	fmt.Println(Entity)
 	blockEntities, _ := WorldProvider.LoadBlockNBT(reflect_world.ChunkPos{0, 0})
 	for _, data := range blockEntities {
 		pos := blockPosFromNBT(data)
