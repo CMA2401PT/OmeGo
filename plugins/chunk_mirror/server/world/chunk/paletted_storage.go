@@ -39,6 +39,26 @@ type PalettedStorage struct {
 	indices []uint32
 }
 
+func (storage *PalettedStorage) GetBits() uint16 {
+	return storage.bitsPerIndex
+}
+
+func (storage *PalettedStorage) GetfilledBitsPerIndex() uint16 {
+	return storage.filledBitsPerIndex
+}
+func (storage *PalettedStorage) GetindexMask() uint32 {
+	return storage.indexMask
+}
+func (storage *PalettedStorage) GetindicesStart() unsafe.Pointer {
+	return storage.indicesStart
+}
+func (storage *PalettedStorage) Getpalette() *Palette {
+	return storage.palette
+}
+func (storage *PalettedStorage) Getindices() []uint32 {
+	return storage.indices
+}
+
 // newPalettedStorage creates a new block storage using the uint32 slice as the indices and the palette passed.
 // The bits per block are calculated using the length of the uint32 slice.
 func newPalettedStorage(indices []uint32, palette *Palette) *PalettedStorage {

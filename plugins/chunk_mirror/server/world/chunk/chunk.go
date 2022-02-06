@@ -22,6 +22,10 @@ type Chunk struct {
 	biomes []*PalettedStorage
 }
 
+func (chunk *Chunk) Air() uint32 {
+	return chunk.air
+}
+
 // New initialises a new chunk and returns it, so that it may be used.
 func New(air uint32, r cube.Range) *Chunk {
 	n := (r.Height() >> 4) + 1
@@ -41,6 +45,11 @@ func (chunk *Chunk) Range() cube.Range {
 // Sub returns a list of all sub chunks present in the chunk.
 func (chunk *Chunk) Sub() []*SubChunk {
 	return chunk.sub
+}
+
+// Biome returns the biome ID at a specific column in the chunk.
+func (chunk *Chunk) Biomes() []*PalettedStorage {
+	return chunk.biomes
 }
 
 // Block returns the runtime ID of the block at a given x, y and z in a chunk at the given layer. If no

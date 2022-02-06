@@ -157,6 +157,7 @@ func (cm *ChunkMirror) New(config []byte) define.Plugin {
 	cm.waitLock = make(chan int)
 
 	cm.memoryChunks = make(map[reflect_world.ChunkPos]*reflect_world.ChunkData)
+	cm.ChunkListeners = make(map[*ChunkListener]*ChunkListener)
 
 	err = yaml.Unmarshal(config, &cm)
 	if err != nil {
@@ -534,11 +535,11 @@ func (cm *ChunkMirror) onNewChunk(p *packet.LevelChunk) {
 	if cm.doCache || cm.isWaiting {
 		cm.providerMu.Lock()
 
-		if cm.hasCache(pos) {
-			fmt.Printf("Chunk Mirror: Update Cache Chunk (%v,%v)\n", chunkX, chunkZ)
-		} else {
-			fmt.Printf("Chunk Mirror: New Cache Chunk (%v,%v)\n", chunkX, chunkZ)
-		}
+		//if cm.hasCache(pos) {
+		//	fmt.Printf("Chunk Mirror: Update Cache Chunk (%v,%v)\n", chunkX, chunkZ)
+		//} else {
+		//	fmt.Printf("Chunk Mirror: New Cache Chunk (%v,%v)\n", chunkX, chunkZ)
+		//}
 		cm.cacheMap[pos] = time.Now()
 		cm.memoryChunks[pos] = reflectChunkData
 		if cm.isWaiting {

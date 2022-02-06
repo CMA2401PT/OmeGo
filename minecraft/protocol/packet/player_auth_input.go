@@ -125,6 +125,8 @@ func (pk *PlayerAuthInput) Marshal(w *protocol.Writer) {
 	}
 	w.Varuint64(&pk.Tick)
 	w.Vec3(&pk.Delta)
+	b := uint8(0)
+	w.Uint8(&b)
 
 	if pk.InputData&InputFlagPerformItemInteraction != 0 {
 		protocol.PlayerInventoryAction(w, &pk.ItemInteractionData)
@@ -141,6 +143,12 @@ func (pk *PlayerAuthInput) Marshal(w *protocol.Writer) {
 			protocol.BlockAction(w, &action)
 		}
 	}
+	//b := uint8(0)
+
+	w.Uint8(&b)
+	NeteaseMark := float32(0)
+	w.Float32(&NeteaseMark)
+	w.Float32(&NeteaseMark)
 }
 
 // Unmarshal ...

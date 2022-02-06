@@ -187,14 +187,6 @@ func (cq *GoCQ) New(config []byte) define.Plugin {
 	return cq
 }
 
-func (cq *GoCQ) Close() {
-	cq.conn.Close()
-}
-
-func (cq *GoCQ) Routine() {
-
-}
-
 func (cq *GoCQ) RegStringSender(name string) func(isJson bool, data string) {
 	_, hasK := cq.stringSender[name]
 	if hasK {
@@ -210,4 +202,12 @@ func (cq *GoCQ) RegStringSender(name string) func(isJson bool, data string) {
 func (cq *GoCQ) Inject(taskIO *task.TaskIO, collaborationContext map[string]define.Plugin) define.Plugin {
 	cq.taskIO = taskIO
 	return cq
+}
+
+func (cq *GoCQ) Close() {
+	cq.conn.Close()
+}
+
+func (cq *GoCQ) Routine() {
+
 }

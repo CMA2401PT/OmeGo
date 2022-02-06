@@ -159,13 +159,50 @@ func (taskIO *TaskIO) newPacketFn(pk packet.Packet) {
 		break
 	case 29:
 		//IDUpdateAttributes
+		break
+	case 163:
+		//IDItemComponent
+		break
+	case 43:
+		// IDSetSpawnPosition
+		break
+	case 145:
+		// IDCreativeContent
+		break
+	case 49:
+		// IDInventoryContent a lot
+		break
+	case 48:
+		//IDPlayerHotBar
+		break
+	case 52:
+		// IDCraftingData
+		break
+	case 76:
+		// IDAvailableCommands
+		break
+	case 39:
+		//IDSetActorData
+		break
+	case 121:
+		//IDNetworkChunkPublisherUpdate a lot
+		break
+	case 58:
+		// IDLevelChunk
+		break
+
+	default:
+		//fmt.Println(id)
 	}
-	fmt.Println(id)
+	//fmt.Println(id)
 	//if id != 143 && id != 49 && id != 58 && id != 111 && id != 121 && id != 40 && id != 19 && id != 27 && id != 39 {
 	//	fmt.Println(id)
 	//}
 
 	switch p := pk.(type) {
+	case *packet.CorrectPlayerMovePrediction:
+		fmt.Println("Time Correct!")
+
 	case *packet.SetCommandsEnabled:
 		taskIO.Status.setCmdEnabled(p.Enabled)
 	case *packet.GameRulesChanged:

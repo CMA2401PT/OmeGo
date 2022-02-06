@@ -9,6 +9,22 @@ type SubChunk struct {
 	skyLight   []uint8
 }
 
+func (sub *SubChunk) GetAir() uint32 {
+	return sub.air
+}
+
+func (sub *SubChunk) GetStorages() []*PalettedStorage {
+	return sub.storages
+}
+
+func (sub *SubChunk) GetBlockLight() []uint8 {
+	return sub.blockLight
+}
+
+func (sub *SubChunk) GetSkyLight() []uint8 {
+	return sub.skyLight
+}
+
 // NewSubChunk creates a new sub chunk. All sub chunks should be created through this function
 func NewSubChunk(air uint32) *SubChunk {
 	return &SubChunk{air: air}

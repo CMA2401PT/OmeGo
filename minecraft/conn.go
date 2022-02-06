@@ -1094,6 +1094,7 @@ func (conn *Conn) handleStartGame(pk *packet.StartGame) error {
 		WorldGameMode:                pk.WorldGameMode,
 		ServerAuthoritativeInventory: pk.ServerAuthoritativeInventory,
 		Experiments:                  pk.Experiments,
+		StartTime:                    time.Now(),
 	}
 	for _, item := range pk.Items {
 		if item.Name == "minecraft:shield" {

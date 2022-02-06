@@ -18,6 +18,22 @@ type Palette struct {
 	values []uint32
 }
 
+func (palette *Palette) GetLast() uint32 {
+	return palette.last
+}
+
+func (palette *Palette) GetlastIndex() int16 {
+	return palette.lastIndex
+}
+
+func (palette *Palette) Getsize() paletteSize {
+	return palette.size
+}
+
+func (palette *Palette) Getvalues() []uint32 {
+	return palette.values
+}
+
 // newPalette returns a new Palette with size and a slice of added values.
 func newPalette(size paletteSize, values []uint32) *Palette {
 	return &Palette{size: size, values: values, last: math.MaxUint32}

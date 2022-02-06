@@ -6,6 +6,7 @@ require (
 	github.com/Tnze/go-mc v1.17.0
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/brentp/intintmap v0.0.0-20190211203843-30dc0ade9af9 // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/df-mc/goleveldb v1.1.9 // indirect
 	github.com/disintegration/imaging v1.6.2
 	github.com/fatih/color v1.13.0 // indirect
@@ -17,6 +18,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.11 // indirect
 	github.com/muhammadmuzzammil1998/jsonc v0.0.0-20211230184646-baf1f7156737 // indirect
 	github.com/robertkrimen/otto v0.0.0-20210614181706-373ff5438452 // indirect
+	github.com/sandertv/gophertunnel v1.18.2 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
 	golang.org/x/net v0.0.0-20220107192237-5cfca573fb4d // indirect
