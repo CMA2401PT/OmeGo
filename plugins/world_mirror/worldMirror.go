@@ -3,6 +3,7 @@ package world_mirror
 import (
 	"fmt"
 	"github.com/go-gl/mathgl/mgl32"
+	reflect_protocol "github.com/sandertv/gophertunnel/minecraft/protocol"
 	reflect_packet "github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"main.go/minecraft"
 	"main.go/minecraft/protocol"
@@ -17,20 +18,22 @@ import (
 )
 
 type Processor struct {
-	cm            *chunk_mirror.ChunkMirror
-	taskIO        *task.TaskIO
-	log           func(isJson bool, data string)
-	reflect       bool
-	closeLock     chan int
-	gameData      minecraft.GameData
-	clientData    login.ClientData
-	RuntimeID     uint64
-	ServerHandle  *server.ServerHandle
-	cachedPackets *CachedPackets
-	currentPos    mgl32.Vec3
-	needUpdate    bool
-	StartTime     time.Time
-	Time          int64
+	cm                *chunk_mirror.ChunkMirror
+	taskIO            *task.TaskIO
+	log               func(isJson bool, data string)
+	reflect           bool
+	closeLock         chan int
+	gameData          minecraft.GameData
+	clientData        login.ClientData
+	RuntimeID         uint64
+	ServerHandle      *server.ServerHandle
+	cachedPackets     *CachedPackets
+	currentPos        mgl32.Vec3
+	needUpdate        bool
+	StartTime         time.Time
+	TickOffest        uint64
+	Tick              uint64
+	PacketsToTransfer []reflect_packet.Packet
 }
 
 func (p *Processor) process(cmd []string) {
@@ -44,8 +47,10 @@ func (p *Processor) process(cmd []string) {
 }
 
 type PlayerAuthInputBridgeHandler struct {
-	taskIO *task.TaskIO
-	p      *Processor
+	taskIO         *task.TaskIO
+	p              *Processor
+	posUpdataFn    func(pos mgl32.Vec3)
+	defaultHandler session.PacketHandler
 }
 
 func (h *PlayerAuthInputBridgeHandler) Handle(p reflect_packet.Packet, s *session.Session) error {
@@ -58,8 +63,12 @@ func (h *PlayerAuthInputBridgeHandler) Handle(p reflect_packet.Packet, s *sessio
 			a.Face})
 	}
 	//fmt.Println(pk.Tick)
-	tick := uint64(time.Now().Sub(h.p.StartTime).Milliseconds() / 50)
-	fmt.Println(tick)
+	if h.p.TickOffest == 0 {
+		h.p.TickOffest = uint64(time.Now().Sub(h.p.StartTime).Milliseconds()/50) - pk.Tick
+	}
+	h.p.Tick = pk.Tick
+
+	//fmt.Println(tick)
 	spk := &packet.PlayerAuthInput{
 		Pitch:               pk.Pitch,
 		Yaw:                 pk.Yaw,
@@ -70,20 +79,53 @@ func (h *PlayerAuthInputBridgeHandler) Handle(p reflect_packet.Packet, s *sessio
 		InputMode:           pk.InputMode,
 		PlayMode:            pk.PlayMode,
 		GazeDirection:       pk.GazeDirection,
-		Tick:                uint64(tick),
+		Tick:                h.p.TickOffest + pk.Tick,
 		Delta:               pk.Delta,
 		ItemInteractionData: protocol.UseItemTransactionData{},
 		ItemStackRequest:    protocol.ItemStackRequest{},
 		BlockActions:        blockActions,
 	}
-	fmt.Println(spk)
+	//fmt.Println(spk)
 	//fmt.Println(spk.Tick)
 	//s.Conn.WritePacket(packet.Respawn{
 	//	Position:        mgl32.Vec3{},
 	//	State:           0,
 	//	EntityRuntimeID: 0,
 	//})
-	h.taskIO.ShieldIO.SendNoLock(spk)
+	if !h.p.needUpdate {
+		h.taskIO.ShieldIO.SendNoLock(spk)
+		h.defaultHandler.Handle(pk, s)
+	} else {
+		fmt.Printf("Pos Update! %v\n", h.p.currentPos)
+		h.p.needUpdate = false
+		pk.Position = h.p.currentPos
+		//h.defaultHandler.Handle(pk, s)
+		//h.posUpdataFn(h.p.currentPos)
+		//spk.Position = h.p.currentPos
+		//h.taskIO.ShieldIO.SendNoLock(spk)
+	}
+	pks := h.p.PacketsToTransfer
+	h.p.PacketsToTransfer = make([]reflect_packet.Packet, 0)
+	for _, pk := range pks {
+		s.WritePacket(pk)
+	}
+
+	return nil
+}
+
+type PlayerActionHandler struct {
+	taskIO *task.TaskIO
+	p      *Processor
+}
+
+func (h *PlayerActionHandler) Handle(p reflect_packet.Packet, s *session.Session) error {
+	pk := p.(*reflect_packet.PlayerAction)
+	h.taskIO.ShieldIO.SendNoLock(&packet.PlayerAction{
+		EntityRuntimeID: h.p.RuntimeID,
+		ActionType:      pk.ActionType,
+		BlockPosition:   protocol.BlockPos(pk.BlockPosition),
+		BlockFace:       pk.BlockFace,
+	})
 	return nil
 }
 
@@ -108,10 +150,18 @@ func (p *Processor) beginReflect() {
 			GetPos: func() mgl32.Vec3 {
 				return p.currentPos
 			},
-			SessionInjectFns: &session.InjectFns{PlayerAuthInputHandler: &PlayerAuthInputBridgeHandler{
-				p.taskIO,
-				p,
-			}},
+			SessionInjectFns: &session.InjectFns{
+				PlayerAuthInputHandler: &PlayerAuthInputBridgeHandler{
+					p.taskIO,
+					p,
+					func(pos mgl32.Vec3) { fmt.Println("Update Fn Not filled!") },
+					&session.PlayerAuthInputHandler{},
+				},
+				PlayerActionInputHandler: &PlayerActionHandler{
+					taskIO: p.taskIO,
+					p:      p,
+				},
+			},
 		},
 	}
 	p.ServerHandle = server.StartWithData(startData)
@@ -132,6 +182,19 @@ func (o *Processor) handleNeteasePacket(pk packet.Packet) {
 			fmt.Printf("Player Me Move ! %v %v %v\n ", p.Position, p.Tick)
 			o.currentPos = p.Position
 			o.needUpdate = true
+			o.PacketsToTransfer = append(o.PacketsToTransfer, &reflect_packet.MovePlayer{
+				EntityRuntimeID:          1,
+				Position:                 p.Position,
+				Pitch:                    p.Pitch,
+				Yaw:                      p.Yaw,
+				HeadYaw:                  p.HeadYaw,
+				Mode:                     p.Mode,
+				OnGround:                 p.OnGround,
+				RiddenEntityRuntimeID:    p.RiddenEntityRuntimeID,
+				TeleportCause:            p.TeleportCause,
+				TeleportSourceEntityType: p.TeleportSourceEntityType,
+				Tick:                     o.Tick + 1,
+			})
 			//o.Time = int64(p.Tick)
 			//o.StartTime = time.Now()
 			//o.currentSession
@@ -142,7 +205,45 @@ func (o *Processor) handleNeteasePacket(pk packet.Packet) {
 			fmt.Printf("Player Me Respawn ! \n")
 			o.currentPos = p.Position
 			o.needUpdate = true
+			//o.PacketsToTransfer = append(o.PacketsToTransfer, &reflect_packet.Respawn{
+			//	Position:        p.Position,
+			//	State:           p.State,
+			//	EntityRuntimeID: 1,
+			//})
 		}
+	case *packet.CorrectPlayerMovePrediction:
+		fmt.Printf("Correct Move Prediction ! \n")
+		o.currentPos = p.Position
+		o.needUpdate = true
+		//o.StartTime = time.Now()
+		//o.TickOffest = p.Tick - o.Tick
+		o.TickOffest = p.Tick - o.Tick
+		o.PacketsToTransfer = append(o.PacketsToTransfer, &reflect_packet.CorrectPlayerMovePrediction{
+			Position: p.Position,
+			Delta:    p.Delta,
+			OnGround: p.OnGround,
+			Tick:     o.Tick,
+		})
+	case *packet.UpdateAttributes:
+		if p.EntityRuntimeID == o.RuntimeID {
+			attrs := make([]reflect_protocol.Attribute, 0)
+			for _, a := range p.Attributes {
+				attrs = append(attrs, reflect_protocol.Attribute{
+					Name:    a.Name,
+					Value:   a.Value,
+					Max:     a.Max,
+					Min:     a.Min,
+					Default: a.Default,
+				})
+			}
+			fmt.Printf("Player UpdateAttributes %v! \n", p)
+			o.PacketsToTransfer = append(o.PacketsToTransfer, &reflect_packet.UpdateAttributes{
+				EntityRuntimeID: 1,
+				Attributes:      attrs,
+				Tick:            o.Tick,
+			})
+		}
+
 	}
 }
 
@@ -165,6 +266,7 @@ func (p *Processor) inject() {
 	p.reflect = false
 	p.closeLock = make(chan int)
 	p.taskIO.ShieldIO.AddSessionTerminateCallBack(p.close)
+	p.PacketsToTransfer = make([]reflect_packet.Packet, 0)
 	p.cachedPackets = &CachedPackets{
 		AvailableActorIdentifiers: make([]*packet.AvailableActorIdentifiers, 0),
 		PlayerList:                make([]*packet.PlayerList, 0),
@@ -173,5 +275,7 @@ func (p *Processor) inject() {
 	p.taskIO.ShieldIO.AddInitCallBack(func(conn *minecraft.Conn) {
 		p.currentPos = conn.GameData().PlayerPosition
 		p.StartTime = conn.GameData().StartTime
+		p.TickOffest = 0
+		p.Tick = 0
 	})
 }

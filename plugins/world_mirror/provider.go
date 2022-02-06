@@ -79,7 +79,7 @@ func (p *ReflectIOProvider) LoadChunk(pos world.ChunkPos) (*chunk.Chunk, bool, e
 	if chunkData == nil {
 		p.isWaiting = true
 		p.waitingPos = _pos
-		fmt.Println("waiting For ChunkData to Load Chunk")
+		fmt.Println("waiting For ChunkData to Load Chunk", p.waitingPos)
 		chunkData = <-p.waitChan
 	}
 	c := chunkData
@@ -100,9 +100,13 @@ func (p *ReflectIOProvider) Close() error {
 }
 
 func (p *ReflectIOProvider) onNewChunk(pos provider_world.ChunkPos, cdata *provider_world.ChunkData) {
-	if p.isWaiting && p.waitingPos == pos {
-		p.waitChan <- cdata
-		p.isWaiting = false
+	if p.isWaiting {
+		fmt.Println("Expecting ", p.waitingPos, " Getting ", pos)
+		if p.waitingPos == pos {
+			fmt.Println("Chan Chunk Data ", pos)
+			p.waitChan <- cdata
+			p.isWaiting = false
+		}
 	}
 }
 

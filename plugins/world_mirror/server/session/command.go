@@ -24,7 +24,7 @@ func (s *Session) SendCommandOutput(output *cmd.Output) {
 		})
 	}
 
-	s.writePacket(&packet.CommandOutput{
+	s.WritePacket(&packet.CommandOutput{
 		CommandOrigin:  s.handlers[packet.IDCommandRequest].(*CommandRequestHandler).origin,
 		OutputType:     packet.CommandOutputTypeAllOutput,
 		SuccessCount:   uint32(output.MessageCount()),
@@ -76,7 +76,7 @@ func (s *Session) sendAvailableCommands() map[string]map[int]cmd.Runnable {
 			})
 		}
 	}
-	s.writePacket(pk)
+	s.WritePacket(pk)
 	return m
 }
 
@@ -170,12 +170,12 @@ func (s *Session) resendEnums(enums map[string]cmd.Enum, before map[string][]str
 		before[name] = values
 
 		if len(valuesBefore) != len(values) {
-			s.writePacket(&packet.UpdateSoftEnum{EnumType: name, Options: values, ActionType: packet.SoftEnumActionSet})
+			s.WritePacket(&packet.UpdateSoftEnum{EnumType: name, Options: values, ActionType: packet.SoftEnumActionSet})
 			continue
 		}
 		for k, v := range values {
 			if valuesBefore[k] != v {
-				s.writePacket(&packet.UpdateSoftEnum{EnumType: name, Options: values, ActionType: packet.SoftEnumActionSet})
+				s.WritePacket(&packet.UpdateSoftEnum{EnumType: name, Options: values, ActionType: packet.SoftEnumActionSet})
 				break
 			}
 		}

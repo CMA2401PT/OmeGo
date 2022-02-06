@@ -22,7 +22,7 @@ func (h *InteractHandler) Handle(p packet.Packet, s *Session) error {
 			return nil
 		}
 		s.invOpened = true
-		s.writePacket(&packet.ContainerOpen{
+		s.WritePacket(&packet.ContainerOpen{
 			WindowID:      0,
 			ContainerType: 0xff,
 		})

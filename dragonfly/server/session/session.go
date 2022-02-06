@@ -4,23 +4,24 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"net"
+	"sync"
+	"time"
+
+	"github.com/go-gl/mathgl/mgl64"
+	"go.uber.org/atomic"
 	"main.go/dragonfly/server/block/cube"
 	"main.go/dragonfly/server/internal"
 	"main.go/dragonfly/server/item/inventory"
 	"main.go/dragonfly/server/player/chat"
 	"main.go/dragonfly/server/player/form"
 	"main.go/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl64"
 	"main.go/minecraft"
 	"main.go/minecraft/protocol"
 	"main.go/minecraft/protocol/login"
 	"main.go/minecraft/protocol/packet"
 	"main.go/minecraft/text"
-	"go.uber.org/atomic"
-	"io"
-	"net"
-	"sync"
-	"time"
 )
 
 // Session handles incoming packets from connections and sends outgoing packets by providing a thin layer
@@ -170,7 +171,7 @@ func (s *Session) Start(c Controllable, w *world.World, gm world.GameMode, onSto
 	w.AddEntity(s.c)
 	s.c.SetGameMode(gm)
 	s.SendAvailableCommands()
-	s.SendSpeed(0.1)
+	s.SendSpeed(1)
 	for _, e := range s.c.Effects() {
 		s.SendEffect(e)
 	}

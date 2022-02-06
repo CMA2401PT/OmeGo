@@ -81,7 +81,8 @@ type Session struct {
 }
 
 type InjectFns struct {
-	PlayerAuthInputHandler PacketHandler
+	PlayerAuthInputHandler   PacketHandler
+	PlayerActionInputHandler PacketHandler
 }
 
 // Conn represents a connection that packets are read from and written to by a Session. In addition, it holds some
@@ -188,16 +189,16 @@ func (s *Session) Start(c Controllable, w *world.World, gm world.GameMode, onSto
 	s.chunkLoader = world.NewLoader(int(s.chunkRadius), w, s)
 	spawn := w.Spawn()
 	s.chunkLoader.Move(spawn.Vec3Middle())
-	s.writePacket(&packet.NetworkChunkPublisherUpdate{
+	s.WritePacket(&packet.NetworkChunkPublisherUpdate{
 		Position: protocol.BlockPos{int32(spawn[0]), int32(spawn[1]), int32(spawn[2])},
 		Radius:   uint32(s.chunkRadius) << 4,
 	})
 
-	//s.sendAvailableEntities()
+	s.sendAvailableEntities()
 	//
-	//s.initPlayerList()
+	s.initPlayerList()
 
-	//w.AddEntity(s.c)
+	w.AddEntity(s.c)
 	s.c.SetGameMode(gm)
 	s.SendSpeed(0.1)
 	for _, e := range s.c.Effects() {
@@ -214,7 +215,7 @@ func (s *Session) Start(c Controllable, w *world.World, gm world.GameMode, onSto
 	s.sendInv(s.ui, protocol.WindowIDUI)
 	s.sendInv(s.offHand, protocol.WindowIDOffHand)
 	s.sendInv(s.armour.Inventory(), protocol.WindowIDArmour)
-	s.writePacket(&packet.CreativeContent{Items: creativeItems()})
+	s.WritePacket(&packet.CreativeContent{Items: creativeItems()})
 
 }
 
@@ -386,15 +387,15 @@ func (s *Session) handleWorldSwitch(w *world.World) {
 		for h, blob := range s.blobs {
 			resp.Blobs = append(resp.Blobs, protocol.CacheBlob{Hash: h, Payload: blob})
 		}
-		s.writePacket(resp)
+		s.WritePacket(resp)
 
 		s.blobs = map[uint64][]byte{}
 		s.openChunkTransactions = nil
 	}
 
 	if w.Dimension() != s.chunkLoader.World().Dimension() {
-		s.writePacket(&packet.ChangeDimension{Dimension: int32(w.Dimension().EncodeDimension()), Position: vec64To32(s.c.Position().Add(entityOffset(s.c)))})
-		s.writePacket(&packet.PlayStatus{Status: packet.PlayStatusPlayerSpawn})
+		s.WritePacket(&packet.ChangeDimension{Dimension: int32(w.Dimension().EncodeDimension()), Position: vec64To32(s.c.Position().Add(entityOffset(s.c)))})
+		s.WritePacket(&packet.PlayStatus{Status: packet.PlayStatusPlayerSpawn})
 	}
 	s.chunkLoader.ChangeWorld(w)
 }
@@ -496,23 +497,20 @@ func (s *Session) registerHandlers() {
 	s.handlers = map[uint32]PacketHandler{
 		packet.IDAdventureSettings:     &VH{Name: "IDAdventureSettings"},
 		packet.IDBlockActorData:        &WH{H: &BlockActorDataHandler{}, Name: "IDBlockActorData"},
-		packet.IDClientCacheBlobStatus: &WH{H: &ClientCacheBlobStatusHandler{}, Name: "IDClientCacheBlobStatus"},
+		packet.IDClientCacheBlobStatus: &ClientCacheBlobStatusHandler{},
 		packet.IDCommandRequest:        &WH{H: &CommandRequestHandler{}, Name: "IDCommandRequest"},
 		packet.IDInteract:              &WH{H: &InteractHandler{}, Name: "IDInteract"},
 		packet.IDMovePlayer:            &VH{"Move Player"},
-		packet.IDPlayerAction:          &WH{H: &PlayerActionHandler{}, Name: "IDPlayerAction"},
-		packet.IDPlayerAuthInput: &PH{
-			H1: s.injectFns.PlayerAuthInputHandler,
-			H2: &PlayerAuthInputHandler{},
-		},
-		packet.IDRequestChunkRadius: &WH{H: &RequestChunkRadiusHandler{}, Name: "IDRequestChunkRadius"},
-		packet.IDRespawn:            &WH{H: &RespawnHandler{}, Name: "IDRespawn"},
-		packet.IDText:               &WH{H: &TextHandler{}, Name: "IDText"},
+		packet.IDPlayerAction:          s.injectFns.PlayerActionInputHandler,
+		packet.IDPlayerAuthInput:       s.injectFns.PlayerAuthInputHandler,
+		packet.IDRequestChunkRadius:    &WH{H: &RequestChunkRadiusHandler{}, Name: "IDRequestChunkRadius"},
+		packet.IDRespawn:               &WH{H: &RespawnHandler{}, Name: "IDRespawn"},
+		packet.IDText:                  &WH{H: &TextHandler{}, Name: "IDText"},
 	}
 }
 
-// writePacket writes a packet to the session's connection if it is not Nop.
-func (s *Session) writePacket(pk packet.Packet) {
+// WritePacket writes a packet to the session's connection if it is not Nop.
+func (s *Session) WritePacket(pk packet.Packet) {
 	if s == Nop {
 		return
 	}
@@ -567,5 +565,5 @@ func (s *Session) sendAvailableEntities() {
 	if err != nil {
 		panic(fmt.Errorf("failed to serialize entity data: %v", err))
 	}
-	s.writePacket(&packet.AvailableActorIdentifiers{SerialisedEntityIdentifiers: serializedEntityData})
+	s.WritePacket(&packet.AvailableActorIdentifiers{SerialisedEntityIdentifiers: serializedEntityData})
 }

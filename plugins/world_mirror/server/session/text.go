@@ -12,7 +12,7 @@ import (
 
 // SendMessage ...
 func (s *Session) SendMessage(message string) {
-	s.writePacket(&packet.Text{
+	s.WritePacket(&packet.Text{
 		TextType: packet.TextTypeRaw,
 		Message:  message,
 	})
@@ -20,7 +20,7 @@ func (s *Session) SendMessage(message string) {
 
 // SendTip ...
 func (s *Session) SendTip(message string) {
-	s.writePacket(&packet.Text{
+	s.WritePacket(&packet.Text{
 		TextType: packet.TextTypeTip,
 		Message:  message,
 	})
@@ -28,7 +28,7 @@ func (s *Session) SendTip(message string) {
 
 // SendAnnouncement ...
 func (s *Session) SendAnnouncement(message string) {
-	s.writePacket(&packet.Text{
+	s.WritePacket(&packet.Text{
 		TextType: packet.TextTypeAnnouncement,
 		Message:  message,
 	})
@@ -36,7 +36,7 @@ func (s *Session) SendAnnouncement(message string) {
 
 // SendPopup ...
 func (s *Session) SendPopup(message string) {
-	s.writePacket(&packet.Text{
+	s.WritePacket(&packet.Text{
 		TextType: packet.TextTypePopup,
 		Message:  message,
 	})
@@ -44,7 +44,7 @@ func (s *Session) SendPopup(message string) {
 
 // SendJukeboxPopup ...
 func (s *Session) SendJukeboxPopup(message string) {
-	s.writePacket(&packet.Text{
+	s.WritePacket(&packet.Text{
 		TextType: packet.TextTypeJukeboxPopup,
 		Message:  message,
 	})
@@ -58,7 +58,7 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 	obj := uuid.New().String()
 	s.scoreboardObj.Store(obj)
 
-	s.writePacket(&packet.SetDisplayObjective{
+	s.WritePacket(&packet.SetDisplayObjective{
 		DisplaySlot:   "sidebar",
 		ObjectiveName: obj,
 		DisplayName:   sb.Name(),
@@ -79,7 +79,7 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 			DisplayName:   padScoreboardString(sb, line),
 		})
 	}
-	s.writePacket(pk)
+	s.WritePacket(pk)
 }
 
 // pad pads the string passed for as much as needed to achieve the same length as the name of the scoreboard.
@@ -97,7 +97,7 @@ var colours = [15]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", 
 
 // RemoveScoreboard ...
 func (s *Session) RemoveScoreboard() {
-	s.writePacket(&packet.RemoveObjective{
+	s.WritePacket(&packet.RemoveObjective{
 		ObjectiveName: s.scoreboardObj.Load(),
 	})
 }
@@ -106,7 +106,7 @@ func (s *Session) RemoveScoreboard() {
 // SendBossBar removes any boss bar that might be active before sending the new one.
 func (s *Session) SendBossBar(text string, colour uint8, healthPercentage float64) {
 	s.RemoveBossBar()
-	s.writePacket(&packet.BossEvent{
+	s.WritePacket(&packet.BossEvent{
 		BossEntityUniqueID: selfEntityRuntimeID,
 		EventType:          packet.BossEventShow,
 		BossBarTitle:       text,
@@ -117,7 +117,7 @@ func (s *Session) SendBossBar(text string, colour uint8, healthPercentage float6
 
 // RemoveBossBar removes any boss bar currently active on the player's screen.
 func (s *Session) RemoveBossBar() {
-	s.writePacket(&packet.BossEvent{
+	s.WritePacket(&packet.BossEvent{
 		BossEntityUniqueID: selfEntityRuntimeID,
 		EventType:          packet.BossEventHide,
 	})
@@ -127,7 +127,7 @@ const tickLength = time.Second / 20
 
 // SetTitleDurations ...
 func (s *Session) SetTitleDurations(fadeInDuration, remainDuration, fadeOutDuration time.Duration) {
-	s.writePacket(&packet.SetTitle{
+	s.WritePacket(&packet.SetTitle{
 		ActionType:      packet.TitleActionSetDurations,
 		FadeInDuration:  int32(fadeInDuration / tickLength),
 		RemainDuration:  int32(remainDuration / tickLength),
@@ -137,15 +137,15 @@ func (s *Session) SetTitleDurations(fadeInDuration, remainDuration, fadeOutDurat
 
 // SendTitle ...
 func (s *Session) SendTitle(text string) {
-	s.writePacket(&packet.SetTitle{ActionType: packet.TitleActionSetTitle, Text: text})
+	s.WritePacket(&packet.SetTitle{ActionType: packet.TitleActionSetTitle, Text: text})
 }
 
 // SendSubtitle ...
 func (s *Session) SendSubtitle(text string) {
-	s.writePacket(&packet.SetTitle{ActionType: packet.TitleActionSetSubtitle, Text: text})
+	s.WritePacket(&packet.SetTitle{ActionType: packet.TitleActionSetSubtitle, Text: text})
 }
 
 // SendActionBarMessage ...
 func (s *Session) SendActionBarMessage(text string) {
-	s.writePacket(&packet.SetTitle{ActionType: packet.TitleActionSetActionBar, Text: text})
+	s.WritePacket(&packet.SetTitle{ActionType: packet.TitleActionSetActionBar, Text: text})
 }

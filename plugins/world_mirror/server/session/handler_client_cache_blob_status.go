@@ -34,7 +34,7 @@ func (c *ClientCacheBlobStatusHandler) Handle(p packet.Packet, s *Session) error
 	s.blobMu.Unlock()
 
 	if len(resp.Blobs) > 0 {
-		s.writePacket(resp)
+		s.WritePacket(resp)
 	}
 	return nil
 }

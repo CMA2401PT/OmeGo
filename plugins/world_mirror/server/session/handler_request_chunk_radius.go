@@ -18,6 +18,6 @@ func (*RequestChunkRadiusHandler) Handle(p packet.Packet, s *Session) error {
 
 	s.chunkLoader.ChangeRadius(int(pk.ChunkRadius))
 
-	s.writePacket(&packet.ChunkRadiusUpdated{ChunkRadius: s.chunkRadius})
+	s.WritePacket(&packet.ChunkRadiusUpdated{ChunkRadius: s.chunkRadius})
 	return nil
 }

@@ -200,9 +200,6 @@ func (taskIO *TaskIO) newPacketFn(pk packet.Packet) {
 	//}
 
 	switch p := pk.(type) {
-	case *packet.CorrectPlayerMovePrediction:
-		fmt.Println("Time Correct!")
-
 	case *packet.SetCommandsEnabled:
 		taskIO.Status.setCmdEnabled(p.Enabled)
 	case *packet.GameRulesChanged:

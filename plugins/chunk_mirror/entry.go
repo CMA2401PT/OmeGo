@@ -446,6 +446,7 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 			//fmt.Printf("Chunk Mirror: Nbt Block not found!  (%v -> %v) @ %v nbt: %v\n", nbtBlockRid, reflectRid, blockPos, nbt)
 			continue
 		}
+
 		if n, ok := b.(reflect_world.NBTer); ok {
 			// Encode the block entities and add the 'x', 'y' and 'z' tags to it.
 			b := n.DecodeNBT(nbt)

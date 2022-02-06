@@ -461,7 +461,7 @@ func (h *ItemStackRequestHandler) resolve(id int32, s *Session) {
 			SlotInfo:    slots,
 		})
 	}
-	s.writePacket(&packet.ItemStackResponse{Responses: []protocol.ItemStackResponse{{
+	s.WritePacket(&packet.ItemStackResponse{Responses: []protocol.ItemStackResponse{{
 		Status:        protocol.ItemStackResponseStatusOK,
 		RequestID:     id,
 		ContainerInfo: info,
@@ -471,7 +471,7 @@ func (h *ItemStackRequestHandler) resolve(id int32, s *Session) {
 
 // reject rejects the item stack request sent by the client so that it is reverted client-side.
 func (h *ItemStackRequestHandler) reject(id int32, s *Session) {
-	s.writePacket(&packet.ItemStackResponse{
+	s.WritePacket(&packet.ItemStackResponse{
 		Responses: []protocol.ItemStackResponse{{
 			Status:    protocol.ItemStackResponseStatusError,
 			RequestID: id,

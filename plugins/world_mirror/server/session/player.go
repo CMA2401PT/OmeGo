@@ -59,7 +59,7 @@ func (s *Session) closeCurrentContainer() {
 
 // SendRespawn spawns the Controllable entity of the session client-side in the world, provided it has died.
 func (s *Session) SendRespawn() {
-	s.writePacket(&packet.Respawn{
+	s.WritePacket(&packet.Respawn{
 		Position:        vec64To32(s.c.Position().Add(entityOffset(s.c))),
 		State:           packet.RespawnStateReadyToSpawn,
 		EntityRuntimeID: selfEntityRuntimeID,
@@ -75,7 +75,7 @@ func (s *Session) sendInv(inv *inventory.Inventory, windowID uint32) {
 	for _, i := range inv.Slots() {
 		pk.Content = append(pk.Content, instanceFromItem(i))
 	}
-	s.writePacket(pk)
+	s.WritePacket(pk)
 }
 
 const (
@@ -137,7 +137,7 @@ func (s *Session) invByID(id int32) (*inventory.Inventory, bool) {
 // it will be shown to the client.
 func (s *Session) Disconnect(message string) {
 	if s != Nop {
-		s.writePacket(&packet.Disconnect{
+		s.WritePacket(&packet.Disconnect{
 			HideDisconnectionScreen: message == "",
 			Message:                 message,
 		})
@@ -147,12 +147,12 @@ func (s *Session) Disconnect(message string) {
 
 // SendSpeed sends the speed of the player in an UpdateAttributes packet, so that it is updated client-side.
 func (s *Session) SendSpeed(speed float64) {
-	s.writePacket(&packet.UpdateAttributes{
+	s.WritePacket(&packet.UpdateAttributes{
 		EntityRuntimeID: selfEntityRuntimeID,
 		Attributes: []protocol.Attribute{{
 			Name:    "minecraft:movement",
 			Value:   float32(speed),
-			Max:     math.MaxFloat32,
+			Max:     float32(speed),
 			Min:     0,
 			Default: 0.1,
 		}},
@@ -161,7 +161,7 @@ func (s *Session) SendSpeed(speed float64) {
 
 // SendFood ...
 func (s *Session) SendFood(food int, saturation, exhaustion float64) {
-	s.writePacket(&packet.UpdateAttributes{
+	s.WritePacket(&packet.UpdateAttributes{
 		EntityRuntimeID: selfEntityRuntimeID,
 		Attributes: []protocol.Attribute{
 			{
@@ -202,7 +202,7 @@ func (s *Session) SendForm(f form.Form) {
 	h.forms[id] = f
 	h.mu.Unlock()
 
-	s.writePacket(&packet.ModalFormRequest{
+	s.WritePacket(&packet.ModalFormRequest{
 		FormID:   id,
 		FormData: b,
 	})
@@ -210,7 +210,7 @@ func (s *Session) SendForm(f form.Form) {
 
 // Transfer transfers the player to a server with the IP and port passed.
 func (s *Session) Transfer(ip net.IP, port int) {
-	s.writePacket(&packet.Transfer{
+	s.WritePacket(&packet.Transfer{
 		Address: ip.String(),
 		Port:    uint16(port),
 	})
@@ -246,8 +246,8 @@ func (s *Session) SendGameMode(mode world.GameMode) {
 	if mode.AllowsFlying() && mode.CreativeInventory() {
 		id = packet.GameTypeCreative
 	}
-	s.writePacket(&packet.SetPlayerGameType{GameType: id})
-	s.writePacket(&packet.AdventureSettings{
+	s.WritePacket(&packet.SetPlayerGameType{GameType: id})
+	s.WritePacket(&packet.AdventureSettings{
 		Flags:             flags,
 		PermissionLevel:   packet.PermissionLevelMember,
 		PlayerUniqueID:    selfEntityRuntimeID,
@@ -257,7 +257,7 @@ func (s *Session) SendGameMode(mode world.GameMode) {
 
 // SendHealth sends the health and max health to the player.
 func (s *Session) SendHealth(health *entity.HealthManager) {
-	s.writePacket(&packet.UpdateAttributes{
+	s.WritePacket(&packet.UpdateAttributes{
 		EntityRuntimeID: selfEntityRuntimeID,
 		Attributes: []protocol.Attribute{{
 			Name:    "minecraft:health",
@@ -274,7 +274,7 @@ func (s *Session) SendAbsorption(value float64) {
 	if math.Mod(value, 2) != 0 {
 		max = value + 1
 	}
-	s.writePacket(&packet.UpdateAttributes{
+	s.WritePacket(&packet.UpdateAttributes{
 		EntityRuntimeID: selfEntityRuntimeID,
 		Attributes: []protocol.Attribute{{
 			Name:  "minecraft:absorption",
@@ -288,7 +288,7 @@ func (s *Session) SendAbsorption(value float64) {
 func (s *Session) SendEffect(e effect.Effect) {
 	s.SendEffectRemoval(e.Type())
 	id, _ := effect.ID(e.Type())
-	s.writePacket(&packet.MobEffect{
+	s.WritePacket(&packet.MobEffect{
 		EntityRuntimeID: selfEntityRuntimeID,
 		Operation:       packet.MobEffectAdd,
 		EffectType:      int32(id),
@@ -304,7 +304,7 @@ func (s *Session) SendEffectRemoval(e effect.Type) {
 	if !ok {
 		panic(fmt.Sprintf("unregistered effect type %T", e))
 	}
-	s.writePacket(&packet.MobEffect{
+	s.WritePacket(&packet.MobEffect{
 		EntityRuntimeID: selfEntityRuntimeID,
 		Operation:       packet.MobEffectRemove,
 		EffectType:      int32(id),
@@ -314,7 +314,7 @@ func (s *Session) SendEffectRemoval(e effect.Type) {
 // SendGameRules sends all the provided game rules to the player. Once sent, they will be immediately updated
 // on the client if they are valid.
 func (s *Session) sendGameRules(gameRules []protocol.GameRule) {
-	s.writePacket(&packet.GameRulesChanged{GameRules: gameRules})
+	s.WritePacket(&packet.GameRulesChanged{GameRules: gameRules})
 }
 
 // EnableCoordinates will either enable or disable coordinates for the player depending on the value given.
@@ -344,7 +344,7 @@ func (s *Session) addToPlayerList(session *Session) {
 	s.entities[runtimeID] = c
 	s.entityMutex.Unlock()
 
-	s.writePacket(&packet.PlayerList{
+	s.WritePacket(&packet.PlayerList{
 		ActionType: packet.PlayerListActionAdd,
 		Entries: []protocol.PlayerListEntry{{
 			UUID:           c.UUID(),
@@ -407,7 +407,7 @@ func (s *Session) removeFromPlayerList(session *Session) {
 	delete(s.entityRuntimeIDs, c)
 	s.entityMutex.Unlock()
 
-	s.writePacket(&packet.PlayerList{
+	s.WritePacket(&packet.PlayerList{
 		ActionType: packet.PlayerListActionRemove,
 		Entries: []protocol.PlayerListEntry{{
 			UUID: c.UUID(),
@@ -428,7 +428,7 @@ func (s *Session) HandleInventories() (inv, offHand *inventory.Inventory, armour
 			}
 		}
 		if !s.inTransaction.Load() {
-			s.writePacket(&packet.InventorySlot{
+			s.WritePacket(&packet.InventorySlot{
 				WindowID: protocol.WindowIDInventory,
 				Slot:     uint32(slot),
 				NewItem:  instanceFromItem(item),
@@ -444,7 +444,7 @@ func (s *Session) HandleInventories() (inv, offHand *inventory.Inventory, armour
 		}
 		if !s.inTransaction.Load() {
 			i, _ := s.offHand.Item(0)
-			s.writePacket(&packet.InventoryContent{
+			s.WritePacket(&packet.InventoryContent{
 				WindowID: protocol.WindowIDOffHand,
 				Content: []protocol.ItemInstance{
 					instanceFromItem(i),
@@ -460,7 +460,7 @@ func (s *Session) HandleInventories() (inv, offHand *inventory.Inventory, armour
 			viewer.ViewEntityArmour(s.c)
 		}
 		if !s.inTransaction.Load() {
-			s.writePacket(&packet.InventorySlot{
+			s.WritePacket(&packet.InventorySlot{
 				WindowID: protocol.WindowIDArmour,
 				Slot:     uint32(slot),
 				NewItem:  instanceFromItem(item),
@@ -483,7 +483,7 @@ func (s *Session) SetHeldSlot(slot int) error {
 	}
 
 	mainHand, _ := s.c.HeldItems()
-	s.writePacket(&packet.MobEquipment{
+	s.WritePacket(&packet.MobEquipment{
 		EntityRuntimeID: selfEntityRuntimeID,
 		NewItem:         instanceFromItem(mainHand),
 		InventorySlot:   byte(slot),

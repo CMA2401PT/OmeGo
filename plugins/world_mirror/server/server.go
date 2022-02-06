@@ -496,8 +496,8 @@ func (server *Server) finaliseConn(ctx context.Context, conn session.Conn, l Lis
 	playerData := &player.Data{
 		UUID:            uuid.UUID{},
 		Username:        NetEaseIdentityData.DisplayName,
-		Position:        mgl64.Vec3{},
-		Velocity:        mgl64.Vec3{float64(pos.X()), float64(pos.Y()), float64(pos.Z())},
+		Position:        mgl64.Vec3{float64(pos.X()), float64(pos.Y()), float64(pos.Z())},
+		Velocity:        mgl64.Vec3{},
 		Yaw:             0,
 		Pitch:           0,
 		Health:          0,
