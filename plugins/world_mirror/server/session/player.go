@@ -148,7 +148,7 @@ func (s *Session) Disconnect(message string) {
 // SendSpeed sends the speed of the player in an UpdateAttributes packet, so that it is updated client-side.
 func (s *Session) SendSpeed(speed float64) {
 	s.WritePacket(&packet.UpdateAttributes{
-		EntityRuntimeID: selfEntityRuntimeID,
+		EntityRuntimeID: s.injectFns.RuntimeID,
 		Attributes: []protocol.Attribute{{
 			Name:    "minecraft:movement",
 			Value:   float32(speed),

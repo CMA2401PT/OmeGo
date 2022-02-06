@@ -85,6 +85,7 @@ type InjectFns struct {
 	PlayerActionInputHandler    PacketHandler
 	InventoryTransactionHandler PacketHandler
 	AnimateHandler              PacketHandler
+	RuntimeID                   uint64
 }
 
 // Conn represents a connection that packets are read from and written to by a Session. In addition, it holds some
@@ -202,7 +203,7 @@ func (s *Session) Start(c Controllable, w *world.World, gm world.GameMode, onSto
 
 	w.AddEntity(s.c)
 	s.c.SetGameMode(gm)
-	s.SendSpeed(0.1)
+	s.SendSpeed(0.103)
 	for _, e := range s.c.Effects() {
 		s.SendEffect(e)
 	}
@@ -509,7 +510,7 @@ func (s *Session) registerHandlers() {
 		packet.IDRespawn:               &WH{H: &RespawnHandler{}, Name: "IDRespawn"},
 		packet.IDText:                  &WH{H: &TextHandler{}, Name: "IDText"},
 		packet.IDAnimate:               s.injectFns.AnimateHandler,
-		//packet.IDInventoryTransaction:  s.injectFns.InventoryTransactionHandler,
+		packet.IDInventoryTransaction:  s.injectFns.InventoryTransactionHandler,
 	}
 }
 

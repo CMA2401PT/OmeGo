@@ -81,6 +81,27 @@ func (o *WorldMirror) onNewText(fromPlugin string, prefix string, data string) (
 }
 
 func (o *WorldMirror) Routine() {
+	//o.taskIO.WaitInit()
+	//i := int32(0)
+	//f := int32(5)
+	//for {
+	//	time.Sleep(time.Second * 3)
+	//	fmt.Println("Send ", i, f)
+	//	o.taskIO.ShieldIO.SendPacket(&packet.PlayerAction{
+	//		EntityRuntimeID: o.taskIO.ShieldIO.GameData().EntityRuntimeID,
+	//		ActionType:      i,
+	//		BlockPosition:   protocol.BlockPos{-5, 1, 7},
+	//		BlockFace:       f,
+	//	})
+	//	i += 1
+	//	if i > 30 {
+	//		i = 0
+	//		f -= 1
+	//		if f == 0 {
+	//			f = 5
+	//		}
+	//	}
+	//}
 
 }
 

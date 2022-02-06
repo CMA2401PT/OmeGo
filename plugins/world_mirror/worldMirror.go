@@ -34,6 +34,8 @@ type Processor struct {
 	TickOffest        uint64
 	Tick              uint64
 	PacketsToTransfer []reflect_packet.Packet
+	TeleportingCount  int
+	updateAtTick      uint64
 }
 
 func (p *Processor) process(cmd []string) {
@@ -55,6 +57,12 @@ type PlayerAuthInputBridgeHandler struct {
 
 func (h *PlayerAuthInputBridgeHandler) Handle(p reflect_packet.Packet, s *session.Session) error {
 	pk := p.(*reflect_packet.PlayerAuthInput)
+	if h.p.needUpdate && h.p.TeleportingCount == 0 && pk.Tick == h.p.updateAtTick {
+		if pk.Position.Sub(h.p.currentPos).Len() > 16 {
+			h.p.TeleportingCount = 20
+		}
+	}
+
 	blockActions := make([]protocol.PlayerBlockAction, 0)
 	for _, a := range pk.BlockActions {
 		blockActions = append(blockActions, protocol.PlayerBlockAction{
@@ -85,6 +93,7 @@ func (h *PlayerAuthInputBridgeHandler) Handle(p reflect_packet.Packet, s *sessio
 		ItemStackRequest:    protocol.ItemStackRequest{},
 		BlockActions:        blockActions,
 	}
+
 	//fmt.Println(spk)
 	//fmt.Println(spk.Tick)
 	//s.Conn.WritePacket(packet.Respawn{
@@ -92,23 +101,46 @@ func (h *PlayerAuthInputBridgeHandler) Handle(p reflect_packet.Packet, s *sessio
 	//	State:           0,
 	//	EntityRuntimeID: 0,
 	//})
-	if !h.p.needUpdate {
-		h.taskIO.ShieldIO.SendNoLock(spk)
+	if h.p.TeleportingCount > 3 {
+		fmt.Println("Freezing ", h.p.TeleportingCount)
+		// 欺骗网易服务器自已经被tp完成
+		// 模拟服务器暂时不更新位置
+		spk.Position = h.p.currentPos
+		h.p.TeleportingCount -= 1
+	} else if h.p.TeleportingCount <= 3 && h.p.TeleportingCount != 0 {
+		fmt.Println("Server Update! ", h.p.TeleportingCount)
+		spk.Position = h.p.currentPos
+		h.p.TeleportingCount -= 1
+		// 模拟服务器更新位置
+		pk.Position = h.p.currentPos
 		h.defaultHandler.Handle(pk, s)
 	} else {
-		fmt.Printf("Pos Update! %v\n", h.p.currentPos)
-		h.p.needUpdate = false
-		pk.Position = h.p.currentPos
-		//h.defaultHandler.Handle(pk, s)
-		//h.posUpdataFn(h.p.currentPos)
-		//spk.Position = h.p.currentPos
-		//h.taskIO.ShieldIO.SendNoLock(spk)
+		h.defaultHandler.Handle(pk, s)
 	}
-	pks := h.p.PacketsToTransfer
-	h.p.PacketsToTransfer = make([]reflect_packet.Packet, 0)
-	for _, pk := range pks {
-		s.WritePacket(pk)
+	if h.p.TeleportingCount <= 3 {
+		// 模拟客户端更新位置
+		pks := h.p.PacketsToTransfer
+		h.p.PacketsToTransfer = make([]reflect_packet.Packet, 0)
+		for _, pk := range pks {
+			s.WritePacket(pk)
+		}
 	}
+	if h.p.TeleportingCount != 0 {
+		fmt.Println("Teleporting Count ", h.p.TeleportingCount)
+	}
+
+	h.taskIO.ShieldIO.SendNoLock(spk)
+	//if !h.p.needUpdate {
+	//
+	//} else {
+	//	fmt.Printf("Pos Update! %v\n", h.p.currentPos)
+	//	h.p.needUpdate = false
+	//	pk.Position = h.p.currentPos
+	//	//h.defaultHandler.Handle(pk, s)
+	//	//h.posUpdataFn(h.p.currentPos)
+	//	//spk.Position = h.p.currentPos
+	//	//h.taskIO.ShieldIO.SendNoLock(spk)
+	//}
 
 	return nil
 }
@@ -121,7 +153,7 @@ type PlayerActionHandler struct {
 func (h *PlayerActionHandler) Handle(p reflect_packet.Packet, s *session.Session) error {
 	pk := p.(*reflect_packet.PlayerAction)
 	h.taskIO.ShieldIO.SendNoLock(&packet.PlayerAction{
-		EntityRuntimeID: h.p.RuntimeID,
+		EntityRuntimeID: pk.EntityRuntimeID,
 		ActionType:      pk.ActionType,
 		BlockPosition:   protocol.BlockPos(pk.BlockPosition),
 		BlockFace:       pk.BlockFace,
@@ -149,35 +181,78 @@ type InventoryTransactionHandler struct {
 	p      *Processor
 }
 
-//func (h *InventoryTransactionHandler) Handle(p reflect_packet.Packet, s *session.Session) error {
-//	LegacySetItemSlots := make([]protocol.LegacySetItemSlot, 0)
-//	Actions := make([]protocol.InventoryAction, 0)
-//
-//	pk := p.(*reflect_packet.InventoryTransaction)
-//	for _, s := range pk.LegacySetItemSlots {
-//		LegacySetItemSlots = append(LegacySetItemSlots, protocol.LegacySetItemSlot{
-//			ContainerID: s.ContainerID,
-//			Slots:       s.Slots,
-//		})
-//	}
-//	//for _, s := range pk.Actions {
-//	//	LegacySetItemSlots = append(LegacySetItemSlots, protocol.InventoryAction{
-//	//		SourceType:    s.SourceType,
-//	//		WindowID:      s.WindowID,
-//	//		SourceFlags:   s.SourceFlags,
-//	//		InventorySlot: s.InventorySlot,
-//	//		OldItem:       s.OldItem{},
-//	//		NewItem:       s.NewItem,
-//	//	})
-//	//}
-//	h.taskIO.ShieldIO.SendNoLock(&packet.InventoryTransaction{
-//		LegacyRequestID:    pk.LegacyRequestID,
-//		LegacySetItemSlots: LegacySetItemSlots,
-//		Actions:            Actions,
-//		TransactionData:    nil,
-//	})
-//	return nil
-//}
+func (h *InventoryTransactionHandler) Handle(p reflect_packet.Packet, s *session.Session) error {
+	LegacySetItemSlots := make([]protocol.LegacySetItemSlot, 0)
+	//Actions := make([]protocol.InventoryAction, 0)
+
+	pk := p.(*reflect_packet.InventoryTransaction)
+	for _, s := range pk.LegacySetItemSlots {
+		LegacySetItemSlots = append(LegacySetItemSlots, protocol.LegacySetItemSlot{
+			ContainerID: s.ContainerID,
+			Slots:       s.Slots,
+		})
+	}
+
+	origTransactionData := pk.TransactionData
+	var DeReflectTransactionData protocol.InventoryTransactionData
+	switch origTransactionData.(type) {
+	case nil, *reflect_protocol.NormalTransactionData:
+		DeReflectTransactionData = &protocol.NormalTransactionData{}
+	case *reflect_protocol.MismatchTransactionData:
+		DeReflectTransactionData = &protocol.MismatchTransactionData{}
+	case *reflect_protocol.UseItemTransactionData:
+		oT := origTransactionData.(*reflect_protocol.UseItemTransactionData)
+		DeReflectTransactionData = &protocol.UseItemTransactionData{
+			LegacyRequestID:    oT.LegacyRequestID,
+			LegacySetItemSlots: DeReflectLegacySetItemSlots(oT.LegacySetItemSlots),
+			Actions:            DeReflectInventoryActions(oT.Actions),
+			ActionType:         oT.ActionType,
+			BlockPosition:      protocol.BlockPos(oT.BlockPosition),
+			BlockFace:          oT.BlockFace,
+			HotBarSlot:         oT.HotBarSlot,
+			HeldItem:           DeReflectItemInstance(oT.HeldItem),
+			Position:           oT.Position,
+			ClickedPosition:    oT.ClickedPosition,
+			BlockRuntimeID:     chunk_mirror.BlockDeReflectMapping[uint32(oT.BlockRuntimeID)],
+		}
+	case *reflect_protocol.UseItemOnEntityTransactionData:
+		oT := origTransactionData.(*reflect_protocol.UseItemOnEntityTransactionData)
+		DeReflectTransactionData = &protocol.UseItemOnEntityTransactionData{
+			TargetEntityRuntimeID: oT.TargetEntityRuntimeID,
+			ActionType:            oT.ActionType,
+			HotBarSlot:            oT.HotBarSlot,
+			HeldItem:              DeReflectItemInstance(oT.HeldItem),
+			Position:              oT.Position,
+			ClickedPosition:       oT.ClickedPosition,
+		}
+	case *reflect_protocol.ReleaseItemTransactionData:
+		oT := origTransactionData.(*reflect_protocol.ReleaseItemTransactionData)
+		DeReflectTransactionData = &protocol.ReleaseItemTransactionData{
+			ActionType:   oT.ActionType,
+			HotBarSlot:   oT.HotBarSlot,
+			HeldItem:     DeReflectItemInstance(oT.HeldItem),
+			HeadPosition: oT.HeadPosition,
+		}
+	}
+
+	//for _, s := range pk.Actions {
+	//	Actions = append(Actions, protocol.InventoryAction{
+	//		SourceType:    s.SourceType,
+	//		WindowID:      s.WindowID,
+	//		SourceFlags:   s.SourceFlags,
+	//		InventorySlot: s.InventorySlot,
+	//		OldItem:       s.OldItem{},
+	//		NewItem:       s.NewItem,
+	//	})
+	//}
+	h.taskIO.ShieldIO.SendNoLock(&packet.InventoryTransaction{
+		LegacyRequestID:    pk.LegacyRequestID,
+		LegacySetItemSlots: LegacySetItemSlots,
+		Actions:            DeReflectInventoryActions(pk.Actions),
+		TransactionData:    DeReflectTransactionData,
+	})
+	return nil
+}
 
 func (p *Processor) beginReflect() {
 	fmt.Println("Reflecting Start")
@@ -211,14 +286,15 @@ func (p *Processor) beginReflect() {
 					taskIO: p.taskIO,
 					p:      p,
 				},
-				//InventoryTransactionHandler: &InventoryTransactionHandler{
-				//	taskIO: p.taskIO,
-				//	p:      p,
-				//},
+				InventoryTransactionHandler: &InventoryTransactionHandler{
+					taskIO: p.taskIO,
+					p:      p,
+				},
 				AnimateHandler: &AnimateHandler{
 					taskIO: p.taskIO,
 					p:      p,
 				},
+				RuntimeID: p.RuntimeID,
 			},
 		},
 	}
@@ -262,6 +338,7 @@ func (o *Processor) handleNeteasePacket(pk packet.Packet) {
 		if p.EntityRuntimeID == o.RuntimeID {
 			fmt.Printf("Player Me Respawn ! \n")
 			o.currentPos = p.Position
+			o.updateAtTick = o.Tick + 1
 			o.needUpdate = true
 			//o.PacketsToTransfer = append(o.PacketsToTransfer, &reflect_packet.Respawn{
 			//	Position:        p.Position,
@@ -272,10 +349,11 @@ func (o *Processor) handleNeteasePacket(pk packet.Packet) {
 	case *packet.CorrectPlayerMovePrediction:
 		fmt.Printf("Correct Move Prediction ! \n")
 		o.currentPos = p.Position
+		o.updateAtTick = o.Tick + 1
 		o.needUpdate = true
 		//o.StartTime = time.Now()
 		//o.TickOffest = p.Tick - o.Tick
-		o.TickOffest = p.Tick - o.Tick
+		//o.TickOffest = p.Tick - o.Tick
 		o.PacketsToTransfer = append(o.PacketsToTransfer, &reflect_packet.CorrectPlayerMovePrediction{
 			Position: p.Position,
 			Delta:    p.Delta,
@@ -295,15 +373,15 @@ func (o *Processor) handleNeteasePacket(pk packet.Packet) {
 				})
 			}
 			fmt.Printf("Player UpdateAttributes %v! \n", p)
-			T := uint64(10)
-			if o.Tick != 0 {
-				T = o.Tick
-			}
-			o.PacketsToTransfer = append(o.PacketsToTransfer, &reflect_packet.UpdateAttributes{
-				EntityRuntimeID: 1,
-				Attributes:      attrs,
-				Tick:            T,
-			})
+			//T := uint64(10)
+			//if o.Tick != 0 {
+			//	T = o.Tick
+			//}
+			//o.PacketsToTransfer = append(o.PacketsToTransfer, &reflect_packet.UpdateAttributes{
+			//	EntityRuntimeID: 1,
+			//	Attributes:      attrs,
+			//	Tick:            T,
+			//})
 		}
 
 	}

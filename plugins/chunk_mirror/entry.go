@@ -48,6 +48,12 @@ type ChunkListener struct {
 	ruleFN ListenRuleFn
 }
 
+// NetEase to Inc
+var BlockReflectMapping []uint32
+
+// Inc to Netease
+var BlockDeReflectMapping map[uint32]uint32
+
 type ChunkMirror struct {
 	AutoCacheByDefault   bool   `yaml:"auto_cache_by_default"`
 	WorldDir             string `yaml:"world_dir"`
@@ -58,26 +64,26 @@ type ChunkMirror struct {
 	FarPointZ            int    `yaml:"far_point_z"`
 	CacheLevel           int    `yaml:"cache_level"`
 	//MinUpdateSecond      int    `yaml:"min_update_second"`
-	NeteaseAirRID       int
-	MirrorAirRID        uint32
-	richBlocks          *RichBlocks
-	worldRange          cube.Range
-	taskIO              *task.TaskIO
-	WorldProvider       *reflect_provider.Provider
-	blockReflectMapping []uint32
-	providerMu          sync.Mutex
-	cacheRecordFile     string
-	listenerDestroyFn   func()
-	cacheMap            map[reflect_world.ChunkPos]time.Time
-	expiredTime         time.Time
-	doCache             bool
-	ChunkListeners      map[*ChunkListener]*ChunkListener
-	lastChunkTime       time.Time
-	chunkReqs           chan *ChunkReq
-	isWaiting           bool
-	waitLock            chan int
-	memoryChunks        map[reflect_world.ChunkPos]*reflect_world.ChunkData
-	special             *SpecialData
+	NeteaseAirRID int
+	MirrorAirRID  uint32
+	richBlocks    *RichBlocks
+	worldRange    cube.Range
+	taskIO        *task.TaskIO
+	WorldProvider *reflect_provider.Provider
+
+	providerMu        sync.Mutex
+	cacheRecordFile   string
+	listenerDestroyFn func()
+	cacheMap          map[reflect_world.ChunkPos]time.Time
+	expiredTime       time.Time
+	doCache           bool
+	ChunkListeners    map[*ChunkListener]*ChunkListener
+	lastChunkTime     time.Time
+	chunkReqs         chan *ChunkReq
+	isWaiting         bool
+	waitLock          chan int
+	memoryChunks      map[reflect_world.ChunkPos]*reflect_world.ChunkData
+	special           *SpecialData
 }
 
 func (cm *ChunkMirror) loadCacheRecordFile() {
@@ -184,9 +190,11 @@ func (cm *ChunkMirror) New(config []byte) define.Plugin {
 	if cm.MirrorAirRID != uint32(richBlocks.ReflectAirRID) {
 		panic("Reflect World not properly init!")
 	}
-	cm.blockReflectMapping = make([]uint32, len(richBlocks.RichBlocks))
+	BlockReflectMapping = make([]uint32, len(richBlocks.RichBlocks))
+	BlockDeReflectMapping = make(map[uint32]uint32)
 	for _, richBlocks := range richBlocks.RichBlocks {
-		cm.blockReflectMapping[richBlocks.NeteaseRID] = uint32(richBlocks.ReflectRID)
+		BlockReflectMapping[richBlocks.NeteaseRID] = uint32(richBlocks.ReflectRID)
+		BlockDeReflectMapping[uint32(richBlocks.ReflectRID)] = uint32(richBlocks.NeteaseRID)
 	}
 
 	if cm.ConfigExpiredTimeStr == "" {
@@ -403,7 +411,7 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 					if neteaseRid == neteaseAirRid {
 						continue
 					} else {
-						reflectRid = cm.blockReflectMapping[neteaseRid]
+						reflectRid = BlockReflectMapping[neteaseRid]
 						reflectChunkData.SetBlock(pX, pY, pZ, 0, reflectRid)
 					}
 				}
@@ -417,7 +425,7 @@ func (cm *ChunkMirror) reflectChunk(pos reflect_world.ChunkPos, c *chunk.Chunk) 
 		auxBlockDefine["nbt"] = nbt
 
 		nbtBlockRid := c.RuntimeID(uint8(blockPos.X()), int16(blockPos.Y()), uint8(blockPos.Z()), 0)
-		reflectRid = cm.blockReflectMapping[nbtBlockRid]
+		reflectRid = BlockReflectMapping[nbtBlockRid]
 		rb := cm.richBlocks.RichBlocks[nbtBlockRid]
 
 		auxBlockDefine["richBlockInfo"] = struct {
