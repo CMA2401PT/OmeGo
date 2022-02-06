@@ -129,6 +129,56 @@ func (h *PlayerActionHandler) Handle(p reflect_packet.Packet, s *session.Session
 	return nil
 }
 
+type AnimateHandler struct {
+	taskIO *task.TaskIO
+	p      *Processor
+}
+
+func (h *AnimateHandler) Handle(p reflect_packet.Packet, s *session.Session) error {
+	pk := p.(*reflect_packet.Animate)
+	h.taskIO.ShieldIO.SendNoLock(&packet.Animate{
+		ActionType:      pk.ActionType,
+		EntityRuntimeID: h.p.RuntimeID,
+		BoatRowingTime:  pk.BoatRowingTime,
+	})
+	return nil
+}
+
+type InventoryTransactionHandler struct {
+	taskIO *task.TaskIO
+	p      *Processor
+}
+
+//func (h *InventoryTransactionHandler) Handle(p reflect_packet.Packet, s *session.Session) error {
+//	LegacySetItemSlots := make([]protocol.LegacySetItemSlot, 0)
+//	Actions := make([]protocol.InventoryAction, 0)
+//
+//	pk := p.(*reflect_packet.InventoryTransaction)
+//	for _, s := range pk.LegacySetItemSlots {
+//		LegacySetItemSlots = append(LegacySetItemSlots, protocol.LegacySetItemSlot{
+//			ContainerID: s.ContainerID,
+//			Slots:       s.Slots,
+//		})
+//	}
+//	//for _, s := range pk.Actions {
+//	//	LegacySetItemSlots = append(LegacySetItemSlots, protocol.InventoryAction{
+//	//		SourceType:    s.SourceType,
+//	//		WindowID:      s.WindowID,
+//	//		SourceFlags:   s.SourceFlags,
+//	//		InventorySlot: s.InventorySlot,
+//	//		OldItem:       s.OldItem{},
+//	//		NewItem:       s.NewItem,
+//	//	})
+//	//}
+//	h.taskIO.ShieldIO.SendNoLock(&packet.InventoryTransaction{
+//		LegacyRequestID:    pk.LegacyRequestID,
+//		LegacySetItemSlots: LegacySetItemSlots,
+//		Actions:            Actions,
+//		TransactionData:    nil,
+//	})
+//	return nil
+//}
+
 func (p *Processor) beginReflect() {
 	fmt.Println("Reflecting Start")
 	p.gameData = p.taskIO.ShieldIO.GameData()
@@ -158,6 +208,14 @@ func (p *Processor) beginReflect() {
 					&session.PlayerAuthInputHandler{},
 				},
 				PlayerActionInputHandler: &PlayerActionHandler{
+					taskIO: p.taskIO,
+					p:      p,
+				},
+				//InventoryTransactionHandler: &InventoryTransactionHandler{
+				//	taskIO: p.taskIO,
+				//	p:      p,
+				//},
+				AnimateHandler: &AnimateHandler{
 					taskIO: p.taskIO,
 					p:      p,
 				},
@@ -237,10 +295,14 @@ func (o *Processor) handleNeteasePacket(pk packet.Packet) {
 				})
 			}
 			fmt.Printf("Player UpdateAttributes %v! \n", p)
+			T := uint64(10)
+			if o.Tick != 0 {
+				T = o.Tick
+			}
 			o.PacketsToTransfer = append(o.PacketsToTransfer, &reflect_packet.UpdateAttributes{
 				EntityRuntimeID: 1,
 				Attributes:      attrs,
-				Tick:            o.Tick,
+				Tick:            T,
 			})
 		}
 

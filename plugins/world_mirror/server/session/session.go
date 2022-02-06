@@ -81,8 +81,10 @@ type Session struct {
 }
 
 type InjectFns struct {
-	PlayerAuthInputHandler   PacketHandler
-	PlayerActionInputHandler PacketHandler
+	PlayerAuthInputHandler      PacketHandler
+	PlayerActionInputHandler    PacketHandler
+	InventoryTransactionHandler PacketHandler
+	AnimateHandler              PacketHandler
 }
 
 // Conn represents a connection that packets are read from and written to by a Session. In addition, it holds some
@@ -303,7 +305,7 @@ func (s *Session) handlePackets() {
 		case 135:
 			break
 		default:
-			s.PackerLogger("pk %v", pk.ID())
+			s.PackerLogger("pk %v %v", pk.ID(), pk)
 		}
 
 		if err != nil {
@@ -506,6 +508,8 @@ func (s *Session) registerHandlers() {
 		packet.IDRequestChunkRadius:    &WH{H: &RequestChunkRadiusHandler{}, Name: "IDRequestChunkRadius"},
 		packet.IDRespawn:               &WH{H: &RespawnHandler{}, Name: "IDRespawn"},
 		packet.IDText:                  &WH{H: &TextHandler{}, Name: "IDText"},
+		packet.IDAnimate:               s.injectFns.AnimateHandler,
+		//packet.IDInventoryTransaction:  s.injectFns.InventoryTransactionHandler,
 	}
 }
 
