@@ -3,6 +3,7 @@ package world_mirror
 import (
 	"fmt"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/mathgl/mgl64"
 	reflect_protocol "github.com/sandertv/gophertunnel/minecraft/protocol"
 	reflect_packet "github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"main.go/minecraft"
@@ -57,9 +58,13 @@ type PlayerAuthInputBridgeHandler struct {
 
 func (h *PlayerAuthInputBridgeHandler) Handle(p reflect_packet.Packet, s *session.Session) error {
 	pk := p.(*reflect_packet.PlayerAuthInput)
+	isTeleporting := false
 	if h.p.needUpdate && h.p.TeleportingCount == 0 && pk.Tick == h.p.updateAtTick {
 		if pk.Position.Sub(h.p.currentPos).Len() > 16 {
 			h.p.TeleportingCount = 20
+			isTeleporting = true
+			time.Sleep(time.Millisecond * 100)
+			fmt.Printf("Teleporting!")
 		}
 	}
 
@@ -100,55 +105,70 @@ func (h *PlayerAuthInputBridgeHandler) Handle(p reflect_packet.Packet, s *sessio
 	//	Position:        mgl32.Vec3{},
 	//	State:           0,
 	//	EntityRuntimeID: 0,
-	//})
-	if h.p.TeleportingCount > 3 {
-		fmt.Println("Freezing ", h.p.TeleportingCount)
-		// 欺骗网易服务器自已经被tp完成
-		// 模拟服务器暂时不更新位置
-		spk.Position = h.p.currentPos
-		h.p.TeleportingCount -= 1
-	} else if h.p.TeleportingCount <= 3 && h.p.TeleportingCount != 0 {
-		fmt.Println("Server Update! ", h.p.TeleportingCount)
-		spk.Position = h.p.currentPos
-		h.p.TeleportingCount -= 1
-		// 模拟服务器更新位置
+	////})
+	//if h.p.TeleportingCount > 3 {
+	//	fmt.Println("Freezing ", h.p.TeleportingCount)
+	//	// 欺骗网易服务器自已经被tp完成
+	//	// 模拟服务器暂时不更新位置
+	//	spk.Position = h.p.currentPos
+	//	h.p.TeleportingCount -= 1
+	//} else if h.p.TeleportingCount <= 3 && h.p.TeleportingCount != 0 {
+	//	fmt.Println("Server Update! ", h.p.TeleportingCount)
+	//	spk.Position = h.p.currentPos
+	//	h.p.TeleportingCount -= 1
+	//	// 模拟服务器更新位置
+	//	pk.Position = h.p.currentPos
+	//	for _, p := range h.p.ServerHandle.Server.Players() {
+	//		p.Teleport(mgl64.Vec3{
+	//			float64(h.p.currentPos.X()),
+	//			float64(h.p.currentPos.Y()),
+	//			float64(h.p.currentPos.Z()),
+	//		})
+	//	}
+	//} else {
+	//	h.defaultHandler.Handle(pk, s)
+	//}
+	//if h.p.TeleportingCount <= 3 {
+	//	// 模拟客户端更新位置
+	//	pks := h.p.PacketsToTransfer
+	//	h.p.PacketsToTransfer = make([]reflect_packet.Packet, 0)
+	//	for _, pk := range pks {
+	//		s.WritePacket(pk)
+	//	}
+	//}
+	//if h.p.TeleportingCount != 0 {
+	//	fmt.Println("Teleporting Count ", h.p.TeleportingCount)
+	//}
+
+	if !h.p.needUpdate {
+		h.defaultHandler.Handle(pk, s)
+		h.taskIO.ShieldIO.SendNoLock(spk)
+	} else {
+		fmt.Printf("Pos Update! %v\n", h.p.currentPos)
+		h.p.needUpdate = false
 		pk.Position = h.p.currentPos
 		h.defaultHandler.Handle(pk, s)
-	} else {
-		h.defaultHandler.Handle(pk, s)
-	}
-	if h.p.TeleportingCount <= 3 {
-		// 模拟客户端更新位置
-		pks := h.p.PacketsToTransfer
-		h.p.PacketsToTransfer = make([]reflect_packet.Packet, 0)
-		for _, pk := range pks {
-			s.WritePacket(pk)
+		if isTeleporting {
+			for _, p := range h.p.ServerHandle.Server.Players() {
+				p.Teleport(mgl64.Vec3{
+					float64(h.p.currentPos.X()),
+					float64(h.p.currentPos.Y()),
+					float64(h.p.currentPos.Z()),
+				})
+			}
 		}
-	}
-	if h.p.TeleportingCount != 0 {
-		fmt.Println("Teleporting Count ", h.p.TeleportingCount)
+
+		//h.defaultHandler.Handle(pk, s)
+		//h.posUpdataFn(h.p.currentPos)
+		//spk.Position = h.p.currentPos
+		//h.taskIO.ShieldIO.SendNoLock(spk)
 	}
 
-	//for _, p := range h.p.ServerHandle.Server.Players() {
-	//	p.Teleport(mgl64.Vec3{
-	//		float64(h.p.currentPos.X()),
-	//		float64(h.p.currentPos.Y()),
-	//		float64(h.p.currentPos.Z()),
-	//	})
-	//}
-
-	h.taskIO.ShieldIO.SendNoLock(spk)
-	//if !h.p.needUpdate {
-	//
-	//} else {
-	//	fmt.Printf("Pos Update! %v\n", h.p.currentPos)
-	//	h.p.needUpdate = false
-	//	pk.Position = h.p.currentPos
-	//	//h.defaultHandler.Handle(pk, s)
-	//	//h.posUpdataFn(h.p.currentPos)
-	//	//spk.Position = h.p.currentPos
-	//	//h.taskIO.ShieldIO.SendNoLock(spk)
-	//}
+	pks := h.p.PacketsToTransfer
+	h.p.PacketsToTransfer = make([]reflect_packet.Packet, 0)
+	for _, pk := range pks {
+		s.WritePacket(pk)
+	}
 
 	return nil
 }
