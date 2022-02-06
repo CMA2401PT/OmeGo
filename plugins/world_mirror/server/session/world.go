@@ -56,8 +56,8 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, c *chunk.Chunk, blockEntiti
 	s.openChunkTransactions = append(s.openChunkTransactions, m)
 	if l := len(s.blobs); l > 4096 {
 		s.blobMu.Unlock()
-		s.log.Errorf("player %v has too many blobs pending %v: disconnecting", s.c.Name(), l)
-		_ = s.c.Close()
+		s.log.Errorf("player %v has too many blobs pending %v: disconnecting", s.C.Name(), l)
+		_ = s.C.Close()
 		return
 	}
 	for i := range hashes {
@@ -679,7 +679,7 @@ func (s *Session) OpenBlockContainer(pos cube.Pos) {
 	}
 	s.closeCurrentContainer()
 
-	b := s.c.World().Block(pos)
+	b := s.C.World().Block(pos)
 	container, ok := b.(block.Container)
 	if ok {
 		s.openNormalContainer(container, pos)
@@ -706,7 +706,7 @@ func (s *Session) OpenBlockContainer(pos cube.Pos) {
 
 // openNormalContainer opens a normal container that can hold items in it server-side.
 func (s *Session) openNormalContainer(b block.Container, pos cube.Pos) {
-	b.AddViewer(s, s.c.World(), pos)
+	b.AddViewer(s, s.C.World(), pos)
 
 	nextID := s.nextWindowID()
 	s.containerOpened.Store(true)
@@ -873,7 +873,7 @@ func (s *Session) entityFromRuntimeID(id uint64) (world.Entity, bool) {
 
 // Position ...
 func (s *Session) Position() mgl64.Vec3 {
-	return s.c.Position()
+	return s.C.Position()
 }
 
 // vec32To64 converts a mgl32.Vec3 to a mgl64.Vec3.

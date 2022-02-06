@@ -44,13 +44,13 @@ func (s *Session) sendAvailableCommands() map[string]map[int]cmd.Runnable {
 			// Don't add duplicate entries for aliases.
 			continue
 		}
-		m[alias] = c.Runnables(s.c)
+		m[alias] = c.Runnables(s.C)
 
-		params := c.Params(s.c)
+		params := c.Params(s.C)
 		overloads := make([]protocol.CommandOverload, len(params))
 		for i, params := range params {
 			for _, paramInfo := range params {
-				t, enum := valueToParamType(paramInfo.Value, s.c)
+				t, enum := valueToParamType(paramInfo.Value, s.C)
 				t |= protocol.CommandArgValid
 
 				opt := byte(0)
@@ -127,7 +127,7 @@ func (s *Session) resendCommands(before map[string]map[int]cmd.Runnable) (map[st
 
 	for alias, c := range commands {
 		if c.Name() == alias {
-			m[alias] = c.Runnables(s.c)
+			m[alias] = c.Runnables(s.C)
 		}
 	}
 	if len(before) != len(m) {
@@ -148,11 +148,11 @@ func (s *Session) enums() (map[string]cmd.Enum, map[string][]string) {
 	enums, enumValues := make(map[string]cmd.Enum), make(map[string][]string)
 	for alias, c := range cmd.Commands() {
 		if c.Name() == alias {
-			for _, params := range c.Params(s.c) {
+			for _, params := range c.Params(s.C) {
 				for _, paramInfo := range params {
 					if enum, ok := paramInfo.Value.(cmd.Enum); ok {
 						enums[enum.Type()] = enum
-						enumValues[enum.Type()] = enum.Options(s.c)
+						enumValues[enum.Type()] = enum.Options(s.C)
 					}
 				}
 			}
@@ -166,7 +166,7 @@ func (s *Session) enums() (map[string]cmd.Enum, map[string][]string) {
 func (s *Session) resendEnums(enums map[string]cmd.Enum, before map[string][]string) {
 	for name, enum := range enums {
 		valuesBefore := before[name]
-		values := enum.Options(s.c)
+		values := enum.Options(s.C)
 		before[name] = values
 
 		if len(valuesBefore) != len(values) {

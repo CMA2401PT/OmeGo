@@ -33,7 +33,7 @@ func (*MobEquipmentHandler) Handle(p packet.Packet, s *Session) error {
 		return nil
 	}
 	// The user swapped changed held slots so stop using item right away.
-	s.c.ReleaseItem()
+	s.C.ReleaseItem()
 
 	clientSideItem := stackToItem(pk.NewItem.Stack)
 	actual, _ := s.inv.Item(int(pk.InventorySlot))
@@ -42,10 +42,10 @@ func (*MobEquipmentHandler) Handle(p packet.Packet, s *Session) error {
 	if !clientSideItem.Equal(actual) {
 		// Only ever debug these as they are frequent and expected to happen whenever client and server get
 		// out of sync.
-		s.log.Debugf("failed processing packet from %v (%v): *packet.MobEquipment: client-side item must be identical to server-side item, but got differences: client: %v vs server: %v", s.Conn.RemoteAddr(), s.c.Name(), clientSideItem, actual)
+		s.log.Debugf("failed processing packet from %v (%v): *packet.MobEquipment: client-side item must be identical to server-side item, but got differences: client: %v vs server: %v", s.Conn.RemoteAddr(), s.C.Name(), clientSideItem, actual)
 	}
-	for _, viewer := range s.c.World().Viewers(s.c.Position()) {
-		viewer.ViewEntityItems(s.c)
+	for _, viewer := range s.C.World().Viewers(s.C.Position()) {
+		viewer.ViewEntityItems(s.C)
 	}
 	return nil
 }

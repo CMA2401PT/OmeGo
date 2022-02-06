@@ -31,7 +31,7 @@ import (
 type Session struct {
 	log internal.Logger
 
-	c        Controllable
+	C        Controllable
 	Conn     Conn
 	handlers map[uint32]PacketHandler
 
@@ -185,7 +185,7 @@ func New(conn Conn, maxChunkRadius int, log internal.Logger, joinMessage, quitMe
 // The function passed will be called when the session stops running.
 func (s *Session) Start(c Controllable, w *world.World, gm world.GameMode, onStop func(controllable Controllable)) {
 	s.onStop = onStop
-	s.c = c
+	s.C = c
 	s.entityRuntimeIDs[c] = selfEntityRuntimeID
 	s.entities[selfEntityRuntimeID] = c
 
@@ -201,10 +201,10 @@ func (s *Session) Start(c Controllable, w *world.World, gm world.GameMode, onSto
 	//
 	s.initPlayerList()
 
-	w.AddEntity(s.c)
-	s.c.SetGameMode(gm)
+	w.AddEntity(s.C)
+	s.C.SetGameMode(gm)
 	s.SendSpeed(0.103)
-	for _, e := range s.c.Effects() {
+	for _, e := range s.C.Effects() {
 		s.SendEffect(e)
 	}
 
@@ -227,8 +227,8 @@ func (s *Session) Start(c Controllable, w *world.World, gm world.GameMode, onSto
 func (s *Session) Close() error {
 	// If the player is being disconnected while they are dead, we respawn the player
 	// so that the player logic works correctly the next time they join.
-	if s.c.Dead() {
-		s.c.Respawn()
+	if s.C.Dead() {
+		s.C.Respawn()
 	}
 
 	s.closeCurrentContainer()
@@ -241,11 +241,11 @@ func (s *Session) Close() error {
 	}
 
 	if s.onStop != nil {
-		s.onStop(s.c)
+		s.onStop(s.C)
 		s.onStop = nil
 
-		_ = s.c.Close()
-		s.c.World().RemoveEntity(s.c)
+		_ = s.C.Close()
+		s.C.World().RemoveEntity(s.C)
 	}
 
 	// This should always be called last due to the timing of the removal of entity runtime IDs.
@@ -315,7 +315,7 @@ func (s *Session) handlePackets() {
 		if err := s.handlePacket(pk); err != nil {
 			// An error occurred during the handling of a packet. Print the error and stop handling any more
 			// packets.
-			s.log.Debugf("failed processing packet from %v (%v): %v\n", s.Conn.RemoteAddr(), s.c.Name(), err)
+			s.log.Debugf("failed processing packet from %v (%v): %v\n", s.Conn.RemoteAddr(), s.C.Name(), err)
 			return
 		}
 	}
@@ -330,7 +330,7 @@ func (s *Session) sendChunks(stop <-chan struct{}) {
 		select {
 		case <-t.C:
 			s.blobMu.Lock()
-			if w := s.c.World(); s.chunkLoader.World() != w && w != nil {
+			if w := s.C.World(); s.chunkLoader.World() != w && w != nil {
 				s.handleWorldSwitch(w)
 			}
 
@@ -397,7 +397,7 @@ func (s *Session) handleWorldSwitch(w *world.World) {
 	}
 
 	if w.Dimension() != s.chunkLoader.World().Dimension() {
-		s.WritePacket(&packet.ChangeDimension{Dimension: int32(w.Dimension().EncodeDimension()), Position: vec64To32(s.c.Position().Add(entityOffset(s.c)))})
+		s.WritePacket(&packet.ChangeDimension{Dimension: int32(w.Dimension().EncodeDimension()), Position: vec64To32(s.C.Position().Add(entityOffset(s.C)))})
 		s.WritePacket(&packet.PlayStatus{Status: packet.PlayStatusPlayerSpawn})
 	}
 	s.chunkLoader.ChangeWorld(w)

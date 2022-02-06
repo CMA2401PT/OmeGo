@@ -35,6 +35,7 @@ type InjectFns struct {
 type ServerHandle struct {
 	ReflectServerConfig Config
 	InjectFns           *InjectFns
+	Server              *Server
 }
 
 func RunServer(h *ServerHandle) {
@@ -46,6 +47,7 @@ func RunServer(h *ServerHandle) {
 
 	srv := New(&h.ReflectServerConfig, log, h.InjectFns)
 	srv.CloseOnProgramEnd()
+	h.Server = srv
 
 	if err := srv.Start(); err != nil {
 		log.Fatalln(err)

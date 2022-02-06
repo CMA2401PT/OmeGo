@@ -21,6 +21,6 @@ func (TextHandler) Handle(p packet.Packet, s *Session) error {
 	if pk.XUID != s.Conn.IdentityData().XUID {
 		return fmt.Errorf("XUID must be equal to player's XUID")
 	}
-	s.c.Chat(pk.Message)
+	s.C.Chat(pk.Message)
 	return nil
 }

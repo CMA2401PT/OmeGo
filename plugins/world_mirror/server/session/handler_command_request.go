@@ -19,6 +19,6 @@ func (h *CommandRequestHandler) Handle(p packet.Packet, s *Session) error {
 	}
 
 	h.origin = pk.CommandOrigin
-	s.c.ExecuteCommand(pk.CommandLine)
+	s.C.ExecuteCommand(pk.CommandLine)
 	return nil
 }

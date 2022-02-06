@@ -41,7 +41,7 @@ func (h *ModalFormResponseHandler) Handle(p packet.Packet, s *Session) error {
 	if !ok {
 		return fmt.Errorf("no form with ID %v currently opened", pk.FormID)
 	}
-	if err := f.SubmitJSON(pk.ResponseData, s.c); err != nil {
+	if err := f.SubmitJSON(pk.ResponseData, s.C); err != nil {
 		return fmt.Errorf("error submitting form data: %w", err)
 	}
 	return nil

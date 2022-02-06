@@ -30,7 +30,7 @@ func (b BlockActorDataHandler) Handle(p packet.Packet, s *Session) error {
 
 // handleSign handles the BlockActorData packet sent when editing a sign.
 func (b BlockActorDataHandler) handleSign(pk *packet.BlockActorData, pos cube.Pos, s *Session) error {
-	if _, ok := s.c.World().Block(pos).(block.Sign); !ok {
+	if _, ok := s.C.World().Block(pos).(block.Sign); !ok {
 		s.log.Debugf("sign block actor data for position without sign %v", pos)
 		return nil
 	}
@@ -52,7 +52,7 @@ func (b BlockActorDataHandler) handleSign(pk *packet.BlockActorData, pos cube.Po
 	if !utf8.ValidString(text) {
 		return fmt.Errorf("sign block actor data text was not valid UTF8")
 	}
-	if err := s.c.EditSign(pos, text); err != nil {
+	if err := s.C.EditSign(pos, text); err != nil {
 		return err
 	}
 	return nil

@@ -31,11 +31,11 @@ func handlePlayerAction(action int32, face int32, pos protocol.BlockPos, entityR
 		defer s.swingingArm.Store(false)
 
 		s.breakingPos = cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
-		s.c.StartBreaking(s.breakingPos, cube.Face(face))
+		s.C.StartBreaking(s.breakingPos, cube.Face(face))
 	case protocol.PlayerActionAbortBreak:
-		s.c.AbortBreaking()
+		s.C.AbortBreaking()
 	case protocol.PlayerActionPredictDestroyBlock, protocol.PlayerActionStopBreak:
-		s.c.FinishBreaking()
+		s.C.FinishBreaking()
 	case protocol.PlayerActionCrackBreak:
 		s.swingingArm.Store(true)
 		defer s.swingingArm.Store(false)
@@ -46,10 +46,10 @@ func handlePlayerAction(action int32, face int32, pos protocol.BlockPos, entityR
 		// block to be broken by comparing positions.
 		if newPos != s.breakingPos {
 			s.breakingPos = newPos
-			s.c.StartBreaking(newPos, cube.Face(face))
+			s.C.StartBreaking(newPos, cube.Face(face))
 			return nil
 		}
-		s.c.ContinueBreaking(cube.Face(face))
+		s.C.ContinueBreaking(cube.Face(face))
 	case protocol.PlayerActionStartBuildingBlock:
 		// Don't do anything for this action.
 	case protocol.PlayerActionCreativePlayerDestroyBlock:

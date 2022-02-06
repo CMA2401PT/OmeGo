@@ -26,8 +26,8 @@ func (h *EmoteHandler) Handle(p packet.Packet, s *Session) error {
 	if err != nil {
 		return err
 	}
-	for _, viewer := range s.c.World().Viewers(s.c.Position()) {
-		viewer.ViewEmote(s.c, emote)
+	for _, viewer := range s.C.World().Viewers(s.C.Position()) {
+		viewer.ViewEmote(s.C, emote)
 	}
 	return nil
 }

@@ -52,15 +52,15 @@ func (s *Session) closeCurrentContainer() {
 	}
 	s.closeWindow()
 	pos := s.openedPos.Load().(cube.Pos)
-	if container, ok := s.c.World().Block(pos).(block.Container); ok {
-		container.RemoveViewer(s, s.c.World(), pos)
+	if container, ok := s.C.World().Block(pos).(block.Container); ok {
+		container.RemoveViewer(s, s.C.World(), pos)
 	}
 }
 
 // SendRespawn spawns the Controllable entity of the session client-side in the world, provided it has died.
 func (s *Session) SendRespawn() {
 	s.WritePacket(&packet.Respawn{
-		Position:        vec64To32(s.c.Position().Add(entityOffset(s.c))),
+		Position:        vec64To32(s.C.Position().Add(entityOffset(s.C))),
 		State:           packet.RespawnStateReadyToSpawn,
 		EntityRuntimeID: selfEntityRuntimeID,
 	})
@@ -110,21 +110,21 @@ func (s *Session) invByID(id int32) (*inventory.Inventory, bool) {
 	case containerChest:
 		// Chests, potentially other containers too.
 		if s.containerOpened.Load() {
-			b := s.c.World().Block(s.openedPos.Load().(cube.Pos))
+			b := s.C.World().Block(s.openedPos.Load().(cube.Pos))
 			if _, chest := b.(block.Chest); chest {
 				return s.openedWindow.Load().(*inventory.Inventory), true
 			}
 		}
 	case containerBarrel:
 		if s.containerOpened.Load() {
-			b := s.c.World().Block(s.openedPos.Load().(cube.Pos))
+			b := s.C.World().Block(s.openedPos.Load().(cube.Pos))
 			if _, barrel := b.(block.Barrel); barrel {
 				return s.openedWindow.Load().(*inventory.Inventory), true
 			}
 		}
 	case containerBeacon:
 		if s.containerOpened.Load() {
-			b := s.c.World().Block(s.openedPos.Load().(cube.Pos))
+			b := s.C.World().Block(s.openedPos.Load().(cube.Pos))
 			if _, beacon := b.(block.Beacon); beacon {
 				return s.ui, true
 			}
@@ -193,7 +193,7 @@ func (s *Session) SendForm(f form.Form) {
 
 	h.mu.Lock()
 	if len(h.forms) > 10 {
-		s.log.Debugf("SendForm %v: more than 10 active forms: dropping an existing one.", s.c.Name())
+		s.log.Debugf("SendForm %v: more than 10 active forms: dropping an existing one.", s.C.Name())
 		for k := range h.forms {
 			delete(h.forms, k)
 			break
@@ -222,7 +222,7 @@ func (s *Session) SendGameMode(mode world.GameMode) {
 	flags, id, perms := uint32(0), int32(packet.GameTypeSurvival), uint32(0)
 	if mode.AllowsFlying() {
 		flags |= packet.AdventureFlagAllowFlight
-		if s.c.Flying() {
+		if s.C.Flying() {
 			flags |= packet.AdventureFlagFlying
 		}
 	}
@@ -332,7 +332,7 @@ func (s *Session) EnableInstantRespawn(enable bool) {
 // addToPlayerList adds the player of a session to the player list of this session. It will be shown in the
 // in-game pause menu screen.
 func (s *Session) addToPlayerList(session *Session) {
-	c := session.c
+	c := session.C
 
 	runtimeID := uint64(1)
 	s.entityMutex.Lock()
@@ -400,7 +400,7 @@ func skinToProtocol(s skin.Skin) protocol.Skin {
 // removeFromPlayerList removes the player of a session from the player list of this session. It will no
 // longer be shown in the in-game pause menu screen.
 func (s *Session) removeFromPlayerList(session *Session) {
-	c := session.c
+	c := session.C
 
 	s.entityMutex.Lock()
 	delete(s.entities, s.entityRuntimeIDs[c])
@@ -419,12 +419,12 @@ func (s *Session) removeFromPlayerList(session *Session) {
 // slots in the inventory are changed.
 func (s *Session) HandleInventories() (inv, offHand *inventory.Inventory, armour *inventory.Armour, heldSlot *atomic.Uint32) {
 	s.inv = inventory.New(36, func(slot int, item item.Stack) {
-		if s.c == nil {
+		if s.C == nil {
 			return
 		}
 		if slot == int(s.heldSlot.Load()) {
-			for _, viewer := range s.c.World().Viewers(s.c.Position()) {
-				viewer.ViewEntityItems(s.c)
+			for _, viewer := range s.C.World().Viewers(s.C.Position()) {
+				viewer.ViewEntityItems(s.C)
 			}
 		}
 		if !s.inTransaction.Load() {
@@ -436,11 +436,11 @@ func (s *Session) HandleInventories() (inv, offHand *inventory.Inventory, armour
 		}
 	})
 	s.offHand = inventory.New(1, func(slot int, item item.Stack) {
-		if s.c == nil {
+		if s.C == nil {
 			return
 		}
-		for _, viewer := range s.c.World().Viewers(s.c.Position()) {
-			viewer.ViewEntityItems(s.c)
+		for _, viewer := range s.C.World().Viewers(s.C.Position()) {
+			viewer.ViewEntityItems(s.C)
 		}
 		if !s.inTransaction.Load() {
 			i, _ := s.offHand.Item(0)
@@ -453,11 +453,11 @@ func (s *Session) HandleInventories() (inv, offHand *inventory.Inventory, armour
 		}
 	})
 	s.armour = inventory.NewArmour(func(slot int, item item.Stack) {
-		if s.c == nil {
+		if s.C == nil {
 			return
 		}
-		for _, viewer := range s.c.World().Viewers(s.c.Position()) {
-			viewer.ViewEntityArmour(s.c)
+		for _, viewer := range s.C.World().Viewers(s.C.Position()) {
+			viewer.ViewEntityArmour(s.C)
 		}
 		if !s.inTransaction.Load() {
 			s.WritePacket(&packet.InventorySlot{
@@ -478,11 +478,11 @@ func (s *Session) SetHeldSlot(slot int) error {
 
 	s.heldSlot.Store(uint32(slot))
 
-	for _, viewer := range s.c.World().Viewers(s.c.Position()) {
-		viewer.ViewEntityItems(s.c)
+	for _, viewer := range s.C.World().Viewers(s.C.Position()) {
+		viewer.ViewEntityItems(s.C)
 	}
 
-	mainHand, _ := s.c.HeldItems()
+	mainHand, _ := s.C.HeldItems()
 	s.WritePacket(&packet.MobEquipment{
 		EntityRuntimeID: selfEntityRuntimeID,
 		NewItem:         instanceFromItem(mainHand),

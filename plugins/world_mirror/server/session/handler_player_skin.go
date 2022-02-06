@@ -17,7 +17,7 @@ func (PlayerSkinHandler) Handle(p packet.Packet, s *Session) error {
 		return fmt.Errorf("error decoding skin: %w", err)
 	}
 
-	s.c.SetSkin(playerSkin)
+	s.C.SetSkin(playerSkin)
 
 	return nil
 }

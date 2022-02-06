@@ -22,7 +22,7 @@ func (h *InventoryTransactionHandler) Handle(p packet.Packet, s *Session) error 
 		// Always resend inventories with normal transactions. Most of the time we do not use these
 		// transactions, so we're best off making sure the client and server stay in sync.
 		if err := h.handleNormalTransaction(pk, s); err != nil {
-			s.log.Debugf("failed processing packet from %v (%v): InventoryTransaction: failed verifying actions in Normal transaction: %v\n", s.Conn.RemoteAddr(), s.c.Name(), err)
+			s.log.Debugf("failed processing packet from %v (%v): InventoryTransaction: failed verifying actions in Normal transaction: %v\n", s.Conn.RemoteAddr(), s.C.Name(), err)
 			return nil
 		}
 		return nil
@@ -31,19 +31,19 @@ func (h *InventoryTransactionHandler) Handle(p packet.Packet, s *Session) error 
 		h.resendInventories(s)
 		return nil
 	case *protocol.UseItemOnEntityTransactionData:
-		held, _ := s.c.HeldItems()
+		held, _ := s.C.HeldItems()
 		if !held.Equal(stackToItem(data.HeldItem.Stack)) {
 			return nil
 		}
 		return h.handleUseItemOnEntityTransaction(data, s)
 	case *protocol.UseItemTransactionData:
-		held, _ := s.c.HeldItems()
+		held, _ := s.C.HeldItems()
 		if !held.Equal(stackToItem(data.HeldItem.Stack)) {
 			return nil
 		}
 		return h.handleUseItemTransaction(data, s)
 	case *protocol.ReleaseItemTransactionData:
-		held, _ := s.c.HeldItems()
+		held, _ := s.C.HeldItems()
 		if !held.Equal(stackToItem(data.HeldItem.Stack)) {
 			return nil
 		}
@@ -71,7 +71,7 @@ func (h *InventoryTransactionHandler) handleNormalTransaction(pk *packet.Invento
 				return fmt.Errorf("unexpected non-zero old item in transaction action: %#v", action.OldItem)
 			}
 			thrown := stackToItem(action.NewItem.Stack)
-			held, off := s.c.HeldItems()
+			held, off := s.C.HeldItems()
 			if !thrown.Comparable(held) {
 				return fmt.Errorf("different item thrown than held in slot: %#v was thrown but held %#v", thrown, held)
 			}
@@ -86,8 +86,8 @@ func (h *InventoryTransactionHandler) handleNormalTransaction(pk *packet.Invento
 			// Explicitly don't re-use the thrown variable. This item was supplied by the user, and if some
 			// logic in the Comparable() method was flawed, users would be able to cheat with item properties.
 			// Only grow or shrink the held item to prevent any such issues.
-			n := s.c.Drop(held.Grow(thrown.Count() - held.Count()))
-			s.c.SetHeldItems(held.Grow(-n), off)
+			n := s.C.Drop(held.Grow(thrown.Count() - held.Count()))
+			s.C.SetHeldItems(held.Grow(-n), off)
 		default:
 			// Ignore inventory actions we don't explicitly handle.
 		}
@@ -112,9 +112,9 @@ func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *pro
 	}
 	switch data.ActionType {
 	case protocol.UseItemOnEntityActionInteract:
-		s.c.UseItemOnEntity(e)
+		s.C.UseItemOnEntity(e)
 	case protocol.UseItemOnEntityActionAttack:
-		s.c.AttackEntity(e)
+		s.C.AttackEntity(e)
 	default:
 		return fmt.Errorf("unhandled UseItemOnEntity ActionType %v", data.ActionType)
 	}
@@ -135,11 +135,11 @@ func (h *InventoryTransactionHandler) handleUseItemTransaction(data *protocol.Us
 
 	switch data.ActionType {
 	case protocol.UseItemActionBreakBlock:
-		s.c.BreakBlock(pos)
+		s.C.BreakBlock(pos)
 	case protocol.UseItemActionClickBlock:
-		s.c.UseItemOnBlock(pos, cube.Face(data.BlockFace), vec32To64(data.ClickedPosition))
+		s.C.UseItemOnBlock(pos, cube.Face(data.BlockFace), vec32To64(data.ClickedPosition))
 	case protocol.UseItemActionClickAir:
-		s.c.UseItem()
+		s.C.UseItem()
 	default:
 		return fmt.Errorf("unhandled UseItem ActionType %v", data.ActionType)
 	}
@@ -148,6 +148,6 @@ func (h *InventoryTransactionHandler) handleUseItemTransaction(data *protocol.Us
 
 // handleReleaseItemTransaction ...
 func (h *InventoryTransactionHandler) handleReleaseItemTransaction(s *Session) error {
-	s.c.ReleaseItem()
+	s.C.ReleaseItem()
 	return nil
 }

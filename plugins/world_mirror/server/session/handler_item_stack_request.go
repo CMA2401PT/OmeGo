@@ -52,7 +52,7 @@ func (h *ItemStackRequestHandler) Handle(p packet.Packet, s *Session) error {
 		if err := h.handleRequest(req, s); err != nil {
 			// Item stacks being out of sync isn't uncommon, so don't error. Just debug the error and let the
 			// revert do its work.
-			s.log.Debugf("failed processing packet from %v (%v): ItemStackRequest: error resolving item stack request: %v", s.Conn.RemoteAddr(), s.c.Name(), err)
+			s.log.Debugf("failed processing packet from %v (%v): ItemStackRequest: error resolving item stack request: %v", s.Conn.RemoteAddr(), s.C.Name(), err)
 		}
 	}
 	return nil
@@ -189,7 +189,7 @@ func call(ctx *event.Context, slot int, it item.Stack, f func(ctx *event.Context
 
 // handleCreativeCraft handles the CreativeCraft request action.
 func (h *ItemStackRequestHandler) handleCreativeCraft(a *protocol.CraftCreativeStackRequestAction, s *Session) error {
-	if !s.c.GameMode().CreativeInventory() {
+	if !s.C.GameMode().CreativeInventory() {
 		return fmt.Errorf("can only craft creative items in gamemode creative/spectator")
 	}
 	index := a.CreativeItemNetworkID - 1
@@ -212,7 +212,7 @@ func (h *ItemStackRequestHandler) handleDestroy(a *protocol.DestroyStackRequestA
 	if h.ignoreDestroy {
 		return nil
 	}
-	if !s.c.GameMode().CreativeInventory() {
+	if !s.C.GameMode().CreativeInventory() {
 		return fmt.Errorf("can only destroy items in gamemode creative/spectator")
 	}
 	if err := h.verifySlot(a.Source, s); err != nil {
@@ -244,7 +244,7 @@ func (h *ItemStackRequestHandler) handleDrop(a *protocol.DropStackRequestAction,
 		return err
 	}
 
-	n := s.c.Drop(i.Grow(int(a.Count) - i.Count()))
+	n := s.C.Drop(i.Grow(int(a.Count) - i.Count()))
 	h.setItemInSlot(a.Source, i.Grow(-n), s)
 	return nil
 }
@@ -261,7 +261,7 @@ func (h *ItemStackRequestHandler) handleBeaconPayment(a *protocol.BeaconPaymentS
 		return fmt.Errorf("no beacon container opened")
 	}
 	pos := s.openedPos.Load().(cube.Pos)
-	beacon, ok := s.c.World().Block(pos).(block.Beacon)
+	beacon, ok := s.C.World().Block(pos).(block.Beacon)
 	if !ok {
 		return fmt.Errorf("no beacon container opened")
 	}
@@ -287,7 +287,7 @@ func (h *ItemStackRequestHandler) handleBeaconPayment(a *protocol.BeaconPaymentS
 	if sOk {
 		beacon.Secondary = secondary.(effect.LastingType)
 	}
-	s.c.World().SetBlock(pos, beacon)
+	s.C.World().SetBlock(pos, beacon)
 
 	// The client will send a Destroy action after this action, but we can't rely on that because the client
 	// could just not send it.

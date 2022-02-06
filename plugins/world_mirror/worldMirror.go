@@ -129,6 +129,14 @@ func (h *PlayerAuthInputBridgeHandler) Handle(p reflect_packet.Packet, s *sessio
 		fmt.Println("Teleporting Count ", h.p.TeleportingCount)
 	}
 
+	//for _, p := range h.p.ServerHandle.Server.Players() {
+	//	p.Teleport(mgl64.Vec3{
+	//		float64(h.p.currentPos.X()),
+	//		float64(h.p.currentPos.Y()),
+	//		float64(h.p.currentPos.Z()),
+	//	})
+	//}
+
 	h.taskIO.ShieldIO.SendNoLock(spk)
 	//if !h.p.needUpdate {
 	//

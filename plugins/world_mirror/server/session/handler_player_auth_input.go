@@ -36,8 +36,8 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 	pk.Position = pk.Position.Sub(mgl32.Vec3{0, 1.62}) // Subtract the base offset of players from the pos.
 
 	newPos := vec32To64(pk.Position)
-	yaw, pitch := s.c.Rotation()
-	deltaPos, deltaYaw, deltaPitch := newPos.Sub(s.c.Position()), float64(pk.Yaw)-yaw, float64(pk.Pitch)-pitch
+	yaw, pitch := s.C.Rotation()
+	deltaPos, deltaYaw, deltaPitch := newPos.Sub(s.C.Position()), float64(pk.Yaw)-yaw, float64(pk.Pitch)-pitch
 	if mgl64.FloatEqual(deltaPos.Len(), 0) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0) {
 		// The PlayerAuthInput packet is sent every tick, so don't do anything if the position and rotation
 		// were unchanged.
@@ -51,26 +51,26 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 			// The player has moved before it received the teleport packet. Ignore this movement entirely and
 			// wait for the client to sync itself back to the server. Once we get a movement that is close
 			// enough to the teleport position, we'll allow the player to move around again.
-			s.ViewEntityTeleport(s.c, s.c.Position())
+			s.ViewEntityTeleport(s.C, s.C.Position())
 			return nil
 		}
 		s.teleportPos = nil
 	}
 	s.teleportMu.Unlock()
 
-	_, submergedBefore := s.c.World().Liquid(cube.PosFromVec3(entity.EyePosition(s.c)))
+	_, submergedBefore := s.C.World().Liquid(cube.PosFromVec3(entity.EyePosition(s.C)))
 
-	s.c.Move(deltaPos, deltaYaw, deltaPitch)
+	s.C.Move(deltaPos, deltaYaw, deltaPitch)
 
-	_, submergedAfter := s.c.World().Liquid(cube.PosFromVec3(entity.EyePosition(s.c)))
+	_, submergedAfter := s.C.World().Liquid(cube.PosFromVec3(entity.EyePosition(s.C)))
 
 	if submergedBefore != submergedAfter {
 		// Player wasn't either breathing before and no longer isn't, or wasn't breathing before and now is,
 		// so send the updated metadata.
-		s.ViewEntityState(s.c)
+		s.ViewEntityState(s.C)
 	}
 
-	s.chunkLoader.Move(s.c.Position())
+	s.chunkLoader.Move(s.C.Position())
 	s.WritePacket(&packet.NetworkChunkPublisherUpdate{
 		Position: protocol.BlockPos{int32(pk.Position[0]), int32(pk.Position[1]), int32(pk.Position[2])},
 		Radius:   uint32(s.chunkRadius) << 4,
@@ -101,33 +101,33 @@ func (h PlayerAuthInputHandler) handleActions(pk *packet.PlayerAuthInput, s *Ses
 // handleInputFlags handles the toggleable input flags set in a PlayerAuthInput packet.
 func (h PlayerAuthInputHandler) handleInputFlags(flags uint64, s *Session) {
 	if flags&packet.InputFlagStartSprinting != 0 {
-		s.c.StartSprinting()
+		s.C.StartSprinting()
 	}
 	if flags&packet.InputFlagStopSprinting != 0 {
-		s.c.StopSprinting()
+		s.C.StopSprinting()
 	}
 	if flags&packet.InputFlagStartSneaking != 0 {
-		s.c.StartSneaking()
+		s.C.StartSneaking()
 	}
 	if flags&packet.InputFlagStopSneaking != 0 {
-		s.c.StopSneaking()
+		s.C.StopSneaking()
 	}
 	if flags&packet.InputFlagStartSwimming != 0 {
-		s.c.StartSwimming()
+		s.C.StartSwimming()
 	}
 	if flags&packet.InputFlagStopSwimming != 0 {
-		s.c.StopSwimming()
+		s.C.StopSwimming()
 	}
 	if flags&packet.InputFlagStartJumping != 0 {
-		s.c.Jump()
+		s.C.Jump()
 	}
 }
 
 // handleUseItemData handles the protocol.UseItemTransactionData found in a packet.PlayerAuthInput.
 func (h PlayerAuthInputHandler) handleUseItemData(data protocol.UseItemTransactionData, s *Session) error {
-	held, _ := s.c.HeldItems()
+	held, _ := s.C.HeldItems()
 	if !held.Equal(stackToItem(data.HeldItem.Stack)) {
-		s.log.Debugf("failed processing item interaction from %v (%v): PlayerAuthInput: actual held and client held item mismatch", s.Conn.RemoteAddr(), s.c.Name())
+		s.log.Debugf("failed processing item interaction from %v (%v): PlayerAuthInput: actual held and client held item mismatch", s.Conn.RemoteAddr(), s.C.Name())
 		return nil
 	}
 	pos := cube.Pos{int(data.BlockPosition[0]), int(data.BlockPosition[1]), int(data.BlockPosition[2])}
@@ -137,7 +137,7 @@ func (h PlayerAuthInputHandler) handleUseItemData(data protocol.UseItemTransacti
 	// Seems like this is only used for breaking blocks at the moment.
 	switch data.ActionType {
 	case protocol.UseItemActionBreakBlock:
-		s.c.BreakBlock(pos)
+		s.C.BreakBlock(pos)
 	default:
 		return fmt.Errorf("unhandled UseItem ActionType for PlayerAuthInput packet %v", data.ActionType)
 	}
