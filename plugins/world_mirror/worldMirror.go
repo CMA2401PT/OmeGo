@@ -387,6 +387,7 @@ func (o *Processor) handleNeteasePacket(pk packet.Packet) {
 		o.needUpdate = true
 		//o.StartTime = time.Now()
 		//o.TickOffest = p.Tick - o.Tick
+		o.TickOffest = p.Tick - o.Tick
 		//o.TickOffest = p.Tick - o.Tick
 		o.PacketsToTransfer = append(o.PacketsToTransfer, &reflect_packet.CorrectPlayerMovePrediction{
 			Position: p.Position,

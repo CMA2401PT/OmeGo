@@ -58,7 +58,7 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 	s.teleportMu.Unlock()
 
 	_, submergedBefore := s.C.World().Liquid(cube.PosFromVec3(entity.EyePosition(s.C)))
-	fmt.Println("Outer:", deltaPos)
+	//fmt.Println("Outer:", deltaPos)
 	s.C.Move(deltaPos, deltaYaw, deltaPitch)
 
 	_, submergedAfter := s.C.World().Liquid(cube.PosFromVec3(entity.EyePosition(s.C)))
@@ -68,7 +68,7 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 		// so send the updated metadata.
 		s.ViewEntityState(s.C)
 	}
-	fmt.Println("Move Chunk Loader", s.C.Position())
+	//fmt.Println("Move Chunk Loader", s.C.Position())
 	s.chunkLoader.Move(s.C.Position())
 	s.WritePacket(&packet.NetworkChunkPublisherUpdate{
 		Position: protocol.BlockPos{int32(pk.Position[0]), int32(pk.Position[1]), int32(pk.Position[2])},

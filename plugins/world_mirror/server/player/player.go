@@ -1838,7 +1838,7 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 
 	pos := p.Position()
 	yaw, pitch := p.Rotation()
-	fmt.Println(deltaPos)
+	//fmt.Println(deltaPos)
 	res, resYaw, resPitch := pos.Add(deltaPos), yaw+deltaYaw, pitch+deltaPitch
 
 	ctx := event.C()
