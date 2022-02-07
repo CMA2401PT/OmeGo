@@ -2,6 +2,7 @@ package session
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 
 	"github.com/cespare/xxhash"
@@ -25,11 +26,13 @@ import (
 
 // ViewChunk ...
 func (s *Session) ViewChunk(pos world.ChunkPos, c *chunk.Chunk, blockEntities map[cube.Pos]world.Block) {
-	if !s.Conn.ClientCacheEnabled() {
-		s.sendNetworkChunk(pos, c, blockEntities)
-		return
-	}
-	s.sendBlobHashes(pos, c, blockEntities)
+	fmt.Println("Send Chunk ", pos)
+	s.sendNetworkChunk(pos, c, blockEntities)
+	//if !s.Conn.ClientCacheEnabled() {
+	//	s.sendNetworkChunk(pos, c, blockEntities)
+	//	return
+	//}
+	//s.sendBlobHashes(pos, c, blockEntities)
 }
 
 // sendBlobHashes sends chunk blob hashes of the data of the chunk and stores the data in a map of blobs. Only
@@ -93,14 +96,14 @@ func (s *Session) sendNetworkChunk(pos world.ChunkPos, c *chunk.Chunk, blockEnti
 	data := chunk.Encode(c, chunk.NetworkEncoding)
 
 	for i := range data.SubChunks {
-		_, _ = s.chunkBuf.Write(data.SubChunks[i])
+		_, _ = s.ChunkBuf.Write(data.SubChunks[i])
 	}
-	_, _ = s.chunkBuf.Write(append(emptyHeightmap, data.Biomes...))
+	_, _ = s.ChunkBuf.Write(append(emptyHeightmap, data.Biomes...))
 
 	// Length of 1 byte for the border block count.
-	s.chunkBuf.WriteByte(0)
+	s.ChunkBuf.WriteByte(0)
 
-	enc := nbt.NewEncoderWithEncoding(s.chunkBuf, nbt.NetworkLittleEndian)
+	enc := nbt.NewEncoderWithEncoding(s.ChunkBuf, nbt.NetworkLittleEndian)
 	for bp, b := range blockEntities {
 		if n, ok := b.(world.NBTer); ok {
 			d := n.EncodeNBT()
@@ -113,9 +116,9 @@ func (s *Session) sendNetworkChunk(pos world.ChunkPos, c *chunk.Chunk, blockEnti
 		ChunkX:        pos[0],
 		ChunkZ:        pos[1],
 		SubChunkCount: uint32(len(data.SubChunks)),
-		RawPayload:    append([]byte(nil), s.chunkBuf.Bytes()...),
+		RawPayload:    append([]byte(nil), s.ChunkBuf.Bytes()...),
 	})
-	s.chunkBuf.Reset()
+	s.ChunkBuf.Reset()
 }
 
 // entityHidden checks if a world.Entity is being explicitly hidden from the Session.

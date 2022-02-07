@@ -41,7 +41,7 @@ type Session struct {
 
 	scoreboardObj atomic.String
 
-	chunkBuf                    *bytes.Buffer
+	ChunkBuf                    *bytes.Buffer
 	chunkLoader                 *world.Loader
 	chunkRadius, maxChunkRadius int32
 
@@ -145,7 +145,7 @@ func New(conn Conn, maxChunkRadius int, log internal.Logger, joinMessage, quitMe
 	}
 
 	s := &Session{
-		chunkBuf:               bytes.NewBuffer(make([]byte, 0, 4096)),
+		ChunkBuf:               bytes.NewBuffer(make([]byte, 0, 4096)),
 		openChunkTransactions:  make([]map[uint64]struct{}, 0, 8),
 		ui:                     inventory.New(51, nil),
 		handlers:               map[uint32]PacketHandler{},
@@ -203,7 +203,7 @@ func (s *Session) Start(c Controllable, w *world.World, gm world.GameMode, onSto
 
 	w.AddEntity(s.C)
 	s.C.SetGameMode(gm)
-	s.SendSpeed(0.103)
+	s.SendSpeed(0.1)
 	for _, e := range s.C.Effects() {
 		s.SendEffect(e)
 	}
@@ -306,7 +306,7 @@ func (s *Session) handlePackets() {
 		case 135:
 			break
 		default:
-			s.PackerLogger("pk %v %v", pk.ID(), pk)
+			s.PackerLogger("Simulate Client Send Packet %v %v", pk.ID(), pk)
 		}
 
 		if err != nil {

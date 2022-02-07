@@ -1831,14 +1831,14 @@ func (p *Player) teleport(pos mgl64.Vec3) {
 // position of the player.
 // Move also rotates the player, adding deltaYaw and deltaPitch to the respective values.
 func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
-	if p.Dead() || p.immobile.Load() || (deltaPos.ApproxEqual(mgl64.Vec3{}) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0)) {
-		return
-	}
+	//if p.Dead() || p.immobile.Load() || (deltaPos.ApproxEqual(mgl64.Vec3{}) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0)) {
+	//	return
+	//}
 	w := p.World()
 
 	pos := p.Position()
 	yaw, pitch := p.Rotation()
-
+	fmt.Println(deltaPos)
 	res, resYaw, resPitch := pos.Add(deltaPos), yaw+deltaYaw, pitch+deltaPitch
 
 	ctx := event.C()
@@ -1847,7 +1847,6 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 		for _, v := range p.viewers() {
 			v.ViewEntityMovement(p, res, resYaw, resPitch, p.OnGround())
 		}
-
 		p.pos.Store(res)
 		p.yaw.Store(resYaw)
 		p.pitch.Store(resPitch)

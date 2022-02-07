@@ -1,6 +1,7 @@
 package world
 
 import (
+	"fmt"
 	"github.com/go-gl/mathgl/mgl64"
 	"math"
 	"sync"
@@ -61,6 +62,7 @@ func (l *Loader) ChangeRadius(new int) {
 
 // Move moves the loader to the position passed. The position is translated to a chunk position to load
 func (l *Loader) Move(pos mgl64.Vec3) {
+	fmt.Println(pos)
 	l.mu.Lock()
 
 	floorX, floorZ := math.Floor(pos[0]), math.Floor(pos[2])
@@ -70,6 +72,7 @@ func (l *Loader) Move(pos mgl64.Vec3) {
 		l.mu.Unlock()
 		return
 	}
+	fmt.Println("New Chunk To Load")
 	l.pos = chunkPos
 	l.evictUnused()
 	l.populateLoadQueue()
