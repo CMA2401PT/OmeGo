@@ -2,7 +2,6 @@ package session
 
 import (
 	"bytes"
-	"fmt"
 	"math/rand"
 
 	"github.com/cespare/xxhash"
@@ -26,7 +25,7 @@ import (
 
 // ViewChunk ...
 func (s *Session) ViewChunk(pos world.ChunkPos, c *chunk.Chunk, blockEntities map[cube.Pos]world.Block) {
-	fmt.Println("Send Chunk ", pos)
+	// fmt.Println("Send Chunk ", pos)
 	s.sendNetworkChunk(pos, c, blockEntities)
 	//if !s.Conn.ClientCacheEnabled() {
 	//	s.sendNetworkChunk(pos, c, blockEntities)
