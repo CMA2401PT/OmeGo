@@ -302,7 +302,7 @@ func (client *Client) authNetEase(identify *Identify) (*minecraft.LoginToken, er
 		fmt.Printf("FB Client: Failed to SendMessage (%v)\n", err)
 		return nil, fmt.Errorf("FB Client: Failed to SendMessage (%v)", err)
 	}
-	resp, err := client.getResponse(time.Second * 5)
+	resp, err := client.getResponse(time.Second * 20)
 	if err != nil {
 		fmt.Printf("FB Client: Failed to GetResponse (%v)\n", err)
 		return nil, fmt.Errorf("FB Client: Failed to GetResponse (%v)", err)

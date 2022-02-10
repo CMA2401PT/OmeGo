@@ -106,23 +106,26 @@ func (io *TaskIOWithLock) UnlockAndOff() *TaskIO {
 		}
 	})
 	io.SendCmdNoLock("gamerule sendcommandfeedback false")
-	time.AfterFunc(time.Second, func() {
+	time.AfterFunc(time.Millisecond*50, func() {
 		// it seems that something went wrong, but it's ok
 		if !unlocked {
-			go func() {
-				fmt.Println("Fail to set sendcommandfeedback false")
-				for !unlocked {
-					io.SendCmdNoLock("gamerule sendcommandfeedback true")
-					io.SendCmdNoLock("gamerule sendcommandfeedback false")
-					time.Sleep(time.Millisecond * 500)
-				}
-				unlocked = true
-				lock.Unlock()
-				fmt.Println("Retry set sendcommandfeedback false success")
-				return
-			}()
-
+			lock.Lock()
 		}
+
+		//if !unlocked {
+		//	go func() {
+		//		fmt.Println("Fail to set sendcommandfeedback false")
+		//		for !unlocked {
+		//			io.SendCmdNoLock("gamerule sendcommandfeedback true")
+		//			io.SendCmdNoLock("gamerule sendcommandfeedback false")
+		//			time.Sleep(time.Millisecond * 500)
+		//		}
+		//		unlocked = true
+		//		lock.Unlock()
+		//		fmt.Println("Retry set sendcommandfeedback false success")
+		//		return
+		//	}()
+		//}
 	})
 	lock.Lock()
 	unlocked = true
@@ -135,6 +138,33 @@ func (io *TaskIOWithLock) UnlockAndRestore() *TaskIO {
 		return io.origTaskIO
 	}
 	return io.UnlockAndOff()
+}
+
+// High Level Api
+const (
+	AfterResponseFeedBackRestore = iota
+	AfterResponseFeedBackOff
+	AfterResponseFeedBackOn
+)
+
+func (io *TaskIO) SendCmdAndWaitForResponse(cmd string, afterResp int) chan *packet.CommandOutput {
+	ret := make(chan *packet.CommandOutput)
+	lockedIO := io.LockCMDAndFBOn()
+	lockedIO.SendCmdWithFeedBack(cmd, func(respPk *packet.CommandOutput) {
+		ret <- respPk
+		switch afterResp {
+		case AfterResponseFeedBackOff:
+			lockedIO.UnlockAndOff()
+			break
+		case AfterResponseFeedBackOn:
+			lockedIO.Unlock()
+			break
+		case AfterResponseFeedBackRestore:
+			lockedIO.UnlockAndRestore()
+			break
+		}
+	})
+	return ret
 }
 
 // NORMAL Block Send
@@ -153,6 +183,11 @@ func (io *TaskIO) SendCmd(cmd string) *TaskIO {
 	pk, _ := io.GenCMD(cmd)
 	io.ShieldIO.SendPacket(pk)
 	return io
+}
+
+func (io *TaskIO) SendCmdNoLock(cmd string) {
+	pk, _ := io.GenCMD(cmd)
+	io.ShieldIO.SendNoLock(pk)
 }
 
 func (io *TaskIO) SendCmdWithFeedBack(cmd string, cb func(respPk *packet.CommandOutput)) *TaskIO {

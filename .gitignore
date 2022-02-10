@@ -3,4 +3,5 @@ config.json
 *.json
 *.exe
 .idea
+*.bdx
 Packets Recored.txt
