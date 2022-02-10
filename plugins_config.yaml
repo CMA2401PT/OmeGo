@@ -1,0 +1,100 @@
+version: 0.0.0
+plugins:
+  - name: storage
+    file: internal
+    configs:
+      root: data
+  - name: ask_for_op
+    file: internal
+  - name: cli_interface
+    as: interface
+    file: internal
+    configs:
+      chat_prefix: '[backend]: '
+  - name: read_chat
+    as: chat_interface
+    file: internal
+    configs:
+      user: "PT24017736"
+      format: "[msg]"
+#  - name: cq_interface
+#    file: internal
+#    configs:
+#      address: ':6700'
+#      groups:
+#        - id: 958915720
+#          name: Q
+#      format: '([src])[user]: [msg]'
+  - name: show_game_chat
+    as: ''
+    file: internal
+    require:
+      - interface
+    configs:
+      dests:
+        - plugin: storage
+          format: '[src]: [msg] ([type])'
+        - plugin: interface
+          format: '[src]: [msg] ([type])'
+#        - plugin: cq_interface
+#          format: '[src]: [msg]'
+#          filter:
+#            - "not me"
+#            - "chat only"
+      hint: chat
+  - name: send_cmd_line
+    file: internal
+    configs:
+      sources:
+        - plugin: interface
+          reg_name: send_cmd_line
+          prefix: /
+      log_name: send_solo_cmd_line
+      log_plugin: storage
+  - name: fast_builder
+    file: internal
+    configs:
+      language: "zh_CN"
+      sources:
+        - plugin: interface
+          reg_name: exec_fb_cmd
+          use: ['get','set','get end','setend','schem','acme','bdump','plot','export','round','circle','sphere','ellipse','ellipsoid','lang','task']
+        - plugin: chat_interface
+          reg_name: exec_fb_cmd
+          use: [ 'get','set','get end','setend','schem','acme','bdump','plot','export','round','circle','sphere','ellipse','ellipsoid','lang','task' ]
+      log_name: fast_builder_cmds_record
+      log_plugin: storage
+      operator: '@a[tag=fb_op]'
+      supervisors: '@a[tag=op]'
+  - name: chunk_mirror
+    file: internal
+    configs:
+      world_dir: "data/MirrorChunk"
+      auto_cache_by_default: on
+  - name: cdump
+    file: internal
+    configs:
+      sources:
+        - plugin: interface
+          reg_name: cdump
+          prefix: cdump
+      log_name: cdump
+      log_plugin: storage
+  - name: world_mirror
+    file: internal
+    configs:
+      sources:
+        - plugin: interface
+          reg_name: world_mirror
+          prefix: reflect
+      log_name: world_mirror
+      log_plugin: storage
+#  - name: builder
+#    file: internal
+#    configs:
+#      sources:
+#        - plugin: interface
+#          reg_name: builder
+#          prefix: build
+#      log_name: builder
+#      log_plugin: storage
