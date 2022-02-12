@@ -41,7 +41,7 @@ func CollectInfo() *StartConfig {
 			},
 		},
 		ServerConfig:     DragonFlyServerConfig{},
-		PluginConfigPath: "plugins_config.json",
+		PluginConfigPath: "plugins_config.yaml",
 		ShieldConfig: shield.ShieldConfig{
 			Respawn:         true,
 			MaxRetryTimes:   0,

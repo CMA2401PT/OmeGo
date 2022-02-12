@@ -116,15 +116,22 @@ func (s *Storage) OpenSqlite(file string) (*sql.DB, error) {
 }
 
 func (s *Storage) initStorage(config *StorageConfig) *Storage {
-	err := os.MkdirAll(config.Logs, 644)
+	stat, err := os.Stat(config.Root)
+	if !(err == nil && stat.IsDir()) {
+		err = os.Mkdir(config.Root, 0755)
+		if err != nil {
+			panic(fmt.Sprintf("Main-InitStorage: cannot create %v (%v)", config.Root, err))
+		}
+	}
+	err = os.MkdirAll(config.Logs, 0755)
 	if err != nil {
 		panic(fmt.Sprintf("Main-InitStorage: cannot create %v (%v)", config.Logs, err))
 	}
-	err = os.MkdirAll(config.Cfgs, 644)
+	err = os.MkdirAll(config.Cfgs, 0755)
 	if err != nil {
 		panic(fmt.Sprintf("Main-InitStorage: cannot create %v (%v)", config.Cfgs, err))
 	}
-	err = os.MkdirAll(config.DB, 644)
+	err = os.MkdirAll(config.DB, 0755)
 	if err != nil {
 		panic(fmt.Sprintf("Main-InitStorage: cannot create %v (%v)", config.DB, err))
 	}
