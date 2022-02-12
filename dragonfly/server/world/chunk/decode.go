@@ -29,18 +29,38 @@ func NetworkDecode(air uint32, data []byte, subChunkCount int) (*Chunk, error) {
 			return nil, err
 		}
 	}
-	//fmt.Printf(" done\n")
-	//fmt.Printf("read biomes")
+
+	// biomes uint8[256]
 	if _, err := buf.Read(c.biomes[:]); err != nil {
 		return nil, fmt.Errorf("error reading biomes: %w", err)
 	}
 	_, _ = buf.ReadByte()
-	//fmt.Printf("decode nbt\n")
+
+	for _, b := range buf.Bytes() {
+		// Nbt should start with a Nbt TAG_Compound
+		if b != uint8(10) {
+			buf.ReadByte()
+		} else {
+			dec := nbt.NewDecoder(bytes.NewBuffer(buf.Bytes()))
+			var m map[string]interface{}
+			if err := dec.Decode(&m); err != nil {
+				buf.ReadByte()
+			} else {
+				break
+			}
+		}
+	}
+
 	dec := nbt.NewDecoder(buf)
 	for buf.Len() != 0 {
+		//fmt.Println(subChunkCount)
+		//fmt.Println(buf.Bytes())
 		var m map[string]interface{}
 		if err := dec.Decode(&m); err != nil {
+			fmt.Println(err)
+			//os.Exit(-1)
 			return nil, fmt.Errorf("error decoding block entity: %w", err)
+
 		}
 		c.SetBlockNBT(cube.Pos{int(m["x"].(int32)), int(m["y"].(int32)), int(m["z"].(int32))}, m)
 	}
