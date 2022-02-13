@@ -31,52 +31,52 @@ func descArr(e []int) []int {
 	return e
 }
 
-type Chunk16 struct {
-	X16    define.PE
-	Z16    define.PE
+type Chunk8 struct {
+	X4     define.PE
+	Z2     define.PE
 	Chunks []*Chunk
 }
 
-func (cs *Chunk16) Len() int {
+func (cs *Chunk8) Len() int {
 	return len(cs.Chunks)
 }
 
-func (cs *Chunk16) Less(i, j int) bool {
-	d1 := math.Pow(float64(cs.Chunks[i].X-cs.X16), 2) + math.Pow(float64(cs.Chunks[i].Z-cs.Z16), 2)
-	d2 := math.Pow(float64(cs.Chunks[j].X-cs.X16), 2) + math.Pow(float64(cs.Chunks[j].Z-cs.Z16), 2)
+func (cs *Chunk8) Less(i, j int) bool {
+	d1 := math.Pow(float64(cs.Chunks[i].X-cs.X4), 2) + math.Pow(float64(cs.Chunks[i].Z-cs.Z2), 2)
+	d2 := math.Pow(float64(cs.Chunks[j].X-cs.X4), 2) + math.Pow(float64(cs.Chunks[j].Z-cs.Z2), 2)
 	return d1 < d2
 }
 
-func (cs *Chunk16) Swap(i, j int) {
+func (cs *Chunk8) Swap(i, j int) {
 	t := cs.Chunks[i]
 	cs.Chunks[i] = cs.Chunks[j]
 	cs.Chunks[j] = t
 }
 
-func (cs *Chunk16) Order() []*Chunk {
+func (cs *Chunk8) Order() []*Chunk {
 	sort.Sort(cs)
 	return cs.Chunks
 }
 
-type Chunk16S map[[2]define.PE]*Chunk16
+type Chunk8S map[[2]define.PE]*Chunk8
 
-func (s Chunk16S) AddChunk(c *Chunk) {
-	X16 := c.X >> 5
-	Z16 := c.Z >> 5
-	c16, hasK := s[[2]define.PE{X16, Z16}]
+func (s Chunk8S) AddChunk(c *Chunk) {
+	X4 := c.X >> 6
+	Z2 := c.Z >> 5
+	c16, hasK := s[[2]define.PE{X4, Z2}]
 	if !hasK {
-		c16 = &Chunk16{
-			X16:    X16<<5 + 1<<4,
-			Z16:    Z16<<5 + 1<<4,
+		c16 = &Chunk8{
+			X4:     X4<<6 + 1<<5,
+			Z2:     Z2<<5 + 1<<4,
 			Chunks: make([]*Chunk, 0),
 		}
-		s[[2]define.PE{X16, Z16}] = c16
+		s[[2]define.PE{X4, Z2}] = c16
 	}
 	c16.Chunks = append(c16.Chunks, c)
 }
 
-func (s Chunk16S) Order() []*Chunk16 {
-	chunk16s := make([]*Chunk16, 0)
+func (s Chunk8S) Order() []*Chunk8 {
+	chunk16s := make([]*Chunk8, 0)
 	XS := make([]int, 0)
 	ZS := make([]int, 0)
 	for pos, _ := range s {

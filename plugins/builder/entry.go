@@ -17,6 +17,7 @@ type Builder struct {
 	Sources   []CmdSource `yaml:"sources"`
 	LogName   string      `yaml:"log_name"`
 	LogPlugin string      `yaml:"log_plugin"`
+	Operator  string      `yaml:"operator"`
 	taskIO    *task.TaskIO
 	log       func(isJson bool, data string)
 	processor *Processor
@@ -26,6 +27,7 @@ func (o *Builder) New(config []byte) define.Plugin {
 	o.Sources = make([]CmdSource, 0)
 	o.LogName = ""
 	o.LogPlugin = "storage"
+	o.Operator = "@a[tag=fb_op,c=1]"
 	err := yaml.Unmarshal(config, o)
 	o.processor = &Processor{}
 	if err != nil {
@@ -52,8 +54,7 @@ func (o *Builder) onNewText(fromPlugin string, prefix string, data string) (bool
 		//catch
 		cmds := o.Compact(data)
 		if cmds[0] == prefix {
-			// cdump sx:sz ex:ez savedir
-			go o.processor.process(cmds)
+			o.processor.process(cmds)
 			return true, ""
 		}
 	}
@@ -74,6 +75,9 @@ func (o *Builder) Inject(taskIO *task.TaskIO, collaborationContext map[string]de
 	}
 	o.processor.taskIO = taskIO
 	o.processor.log = o.log
+	o.processor.Operator = o.Operator
+	o.processor.expectSpeed = 600
+	o.processor.speedFactor = 1
 	return o
 }
 

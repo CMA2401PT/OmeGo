@@ -109,19 +109,17 @@ func (io *TaskIOWithLock) UnlockAndOff() *TaskIO {
 	time.AfterFunc(time.Millisecond*50, func() {
 		// it seems that something went wrong, but it's ok
 		if !unlocked {
-			lock.Lock()
+			lock.Unlock()
 		}
-
 		//if !unlocked {
 		//	go func() {
 		//		fmt.Println("Fail to set sendcommandfeedback false")
 		//		for !unlocked {
 		//			io.SendCmdNoLock("gamerule sendcommandfeedback true")
+		//			time.Sleep(time.Millisecond * 100)
 		//			io.SendCmdNoLock("gamerule sendcommandfeedback false")
-		//			time.Sleep(time.Millisecond * 500)
+		//			time.Sleep(time.Millisecond * 100)
 		//		}
-		//		unlocked = true
-		//		lock.Unlock()
 		//		fmt.Println("Retry set sendcommandfeedback false success")
 		//		return
 		//	}()
@@ -148,10 +146,9 @@ const (
 )
 
 func (io *TaskIO) SendCmdAndWaitForResponse(cmd string, afterResp int) chan *packet.CommandOutput {
-	ret := make(chan *packet.CommandOutput)
+	ret := make(chan *packet.CommandOutput, 1)
 	lockedIO := io.LockCMDAndFBOn()
 	lockedIO.SendCmdWithFeedBack(cmd, func(respPk *packet.CommandOutput) {
-		ret <- respPk
 		switch afterResp {
 		case AfterResponseFeedBackOff:
 			lockedIO.UnlockAndOff()
@@ -163,6 +160,8 @@ func (io *TaskIO) SendCmdAndWaitForResponse(cmd string, afterResp int) chan *pac
 			lockedIO.UnlockAndRestore()
 			break
 		}
+		//fmt.Println("Get Cmd Response")
+		ret <- respPk
 	})
 	return ret
 }

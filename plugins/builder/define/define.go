@@ -47,15 +47,20 @@ const (
 	SPAWN_Z = uint8(4)
 )
 
-type Op struct {
-	Level   uint8
+//type Op struct {
+//	Level   uint8
+//	Pos     Pos
+//	Spawn   uint8
+//	BlockID BLOCKID
+//}
+
+type BlockOp struct {
 	Pos     Pos
-	Spawn   uint8
 	BlockID BLOCKID
 }
 
 type OpsGroup struct {
-	NormalOps *[]*Op
+	NormalOps *[]*BlockOp
 	Palette   BlockID2BlockDescribeMapping
 	NbtOps    []NbtBlock
 }

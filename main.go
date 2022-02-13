@@ -22,7 +22,7 @@ func updateFBConfig(cfg config.FastBuilderMCConfig) config.FastBuilderMCConfig {
 	if cfg.UseFBVersion == "auto_update" || (cfg.UseFBVersion == "use_current" && cfg.FBCurrentVersion == "") {
 		version, err := config.GetVersionInfo(cfg.FBVersionCodeUrl)
 		if err != nil {
-			panic(fmt.Errorf("Main: Fail to fectch FB version (%v)", err))
+			panic(fmt.Errorf("main: Fail to fectch FB version (%v)", err))
 		}
 		cfg.FBCurrentVersion = version
 	}

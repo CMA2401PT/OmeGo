@@ -64,7 +64,7 @@ plugins:
           use: [ 'get','set','get end','setend','schem','acme','bdump','plot','export','round','circle','sphere','ellipse','ellipsoid','lang','task' ]
       log_name: fast_builder_cmds_record
       log_plugin: storage
-      operator: '@a[tag=fb_op]'
+      operator: '@a[tag=fb_op,c=1]'
       supervisors: '@a[tag=op]'
   - name: chunk_mirror
     file: internal
@@ -89,12 +89,13 @@ plugins:
           prefix: reflect
       log_name: world_mirror
       log_plugin: storage
-#  - name: builder
-#    file: internal
-#    configs:
-#      sources:
-#        - plugin: interface
-#          reg_name: builder
-#          prefix: build
-#      log_name: builder
-#      log_plugin: storage
+  - name: builder
+    file: internal
+    configs:
+      sources:
+        - plugin: interface
+          reg_name: builder
+          prefix: build
+      log_name: builder
+      log_plugin: storage
+      operator: '@a[tag=fb_op,c=1]'

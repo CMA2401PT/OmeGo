@@ -11,22 +11,23 @@ type Chunk struct {
 	//Block2ID  BlockDescribe2BlockIDMapping
 	//ID2Block  BlockID2BlockDescribeMapping
 	X, Z PE
+	T    subChunk.SubChunk
 }
 
-func NewChunk(MaxHeight uint16, ChunkX, ChunkZ PE, Template subChunk.SubChunk) *Chunk {
-	n := (MaxHeight >> 4) + 1
-	sub := make([]subChunk.SubChunk, n)
-	for i := uint16(0); i < n; i++ {
-		sub[i] = Template.New()
-	}
-	c := &Chunk{Sub: sub, X: ChunkX << 4, Z: ChunkZ << 4, NbtBlocks: make([]NbtBlock, 0)}
+func NewChunk(ChunkX, ChunkZ PE, Template subChunk.SubChunk) *Chunk {
+	sub := make([]subChunk.SubChunk, 0)
+	c := &Chunk{Sub: sub, X: ChunkX << 4, Z: ChunkZ << 4, NbtBlocks: make([]NbtBlock, 0), T: Template}
 	//c.Block2ID = NewBlock2IDMapping()
 	//c.ID2Block = NewID2BlockMapping()
 	return c
 }
 
 func (chunk *Chunk) SetBlockByID(X, Y, Z PE, blk BLOCKID) {
-	sub := chunk.Sub[Y>>4]
+	layerI := Y >> 4
+	for len(chunk.Sub) <= int(layerI) {
+		chunk.Sub = append(chunk.Sub, chunk.T.New())
+	}
+	sub := chunk.Sub[layerI]
 	sub.Set(uint8(X&0xf), uint8(Y&0xf), uint8(Z&0xf), blk)
 }
 
@@ -39,7 +40,7 @@ func (chunk *Chunk) SetNbtBlock(X, Y, Z PE, blk BlockDescribe, nbt Nbt) {
 }
 
 func (chunk *Chunk) GetOps(ID2Block BlockID2BlockDescribeMapping) *OpsGroup {
-	Ops := make([]*Op, 0, 4096)
+	Ops := make([]*BlockOp, 0, 4096)
 	OpsPtr := &Ops
 	g := &OpsGroup{
 		NormalOps: OpsPtr,

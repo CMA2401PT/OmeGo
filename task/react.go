@@ -69,6 +69,7 @@ func (io *TaskIO) AddOnCmdFeedBackOffCb(cb func()) {
 
 func (taskIO *TaskIO) onGameRuleChanged(pk *packet.GameRulesChanged) {
 	for _, rule := range pk.GameRules {
+		//fmt.Println(rule.Name, " ", rule.Value)
 		if rule.Name == "sendcommandfeedback" {
 			sendCommandFeedBack := rule.Value.(bool)
 			taskIO.Status.setCmdFB(sendCommandFeedBack)
