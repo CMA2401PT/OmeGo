@@ -58,10 +58,10 @@ plugins:
       sources:
         - plugin: interface
           reg_name: exec_fb_cmd
-          use: ['get','set','get end','setend','schem','acme','bdump','plot','export','round','circle','sphere','ellipse','ellipsoid','lang','task']
+          use: ['get','set','get end','setend','schem','acme','bdump','plot','mapart','export','round','circle','sphere','ellipse','ellipsoid','lang','task']
         - plugin: chat_interface
           reg_name: exec_fb_cmd
-          use: [ 'get','set','get end','setend','schem','acme','bdump','plot','export','round','circle','sphere','ellipse','ellipsoid','lang','task' ]
+          use: [ 'get','set','get end','setend','schem','acme','bdump','plot','mapart','export','round','circle','sphere','ellipse','ellipsoid','lang','task' ]
       log_name: fast_builder_cmds_record
       log_plugin: storage
       operator: '@a[tag=fb_op,c=1]'
