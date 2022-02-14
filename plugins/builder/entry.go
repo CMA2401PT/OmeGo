@@ -1,7 +1,10 @@
 package builder
 
 import (
+	"fmt"
 	"gopkg.in/yaml.v3"
+	"main.go/plugins/builder/ir"
+	"main.go/plugins/builder/ir/subChunk/plain"
 	"main.go/plugins/define"
 	"main.go/task"
 	"strings"
@@ -79,6 +82,18 @@ func (o *Builder) Inject(taskIO *task.TaskIO, collaborationContext map[string]de
 	o.processor.expectSpeed = 600
 	o.processor.speedFactor = 1
 	return o
+}
+
+func (o *Builder) GetIR() (*ir.IR, error) {
+	if !o.processor.posSetted {
+		return nil, fmt.Errorf("cannot get Build Handler, Pos not setted")
+	}
+	irStructure := ir.NewIRWithOffset(255, &plain.Storage{}, o.processor.X, o.processor.Y, o.processor.Z)
+	return irStructure, nil
+}
+
+func (o *Builder) BuildIR(ir *ir.IR) {
+	go o.processor.BuildfromIR(ir)
 }
 
 func (o *Builder) Routine() {

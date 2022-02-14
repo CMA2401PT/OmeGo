@@ -6,12 +6,13 @@ import (
 )
 
 type IR struct {
-	Template  subChunk.SubChunk
-	Chunks    map[[2]define.PE]*Chunk
-	Block2ID  define.BlockDescribe2BlockIDMapping
-	ID2Block  define.BlockID2BlockDescribeMapping
-	Counter   int
-	MaxHeight uint16
+	Template                  subChunk.SubChunk
+	Chunks                    map[[2]define.PE]*Chunk
+	Block2ID                  define.BlockDescribe2BlockIDMapping
+	ID2Block                  define.BlockID2BlockDescribeMapping
+	Counter                   int
+	MaxHeight                 uint16
+	offsetX, offsetY, offsetZ define.PE
 }
 
 func NewIR(MaxHeight uint16, Template subChunk.SubChunk) *IR {
@@ -21,11 +22,31 @@ func NewIR(MaxHeight uint16, Template subChunk.SubChunk) *IR {
 		Block2ID:  define.NewBlock2IDMapping(),
 		ID2Block:  define.NewID2BlockMapping(),
 		MaxHeight: MaxHeight,
+		offsetX:   0,
+		offsetY:   0,
+		offsetZ:   0,
+	}
+	return ir
+}
+
+func NewIRWithOffset(MaxHeight uint16, Template subChunk.SubChunk, X, Y, Z define.PE) *IR {
+	ir := &IR{
+		Template:  Template,
+		Chunks:    make(map[[2]define.PE]*Chunk),
+		Block2ID:  define.NewBlock2IDMapping(),
+		ID2Block:  define.NewID2BlockMapping(),
+		MaxHeight: MaxHeight,
+		offsetX:   X,
+		offsetY:   Y,
+		offsetZ:   Z,
 	}
 	return ir
 }
 
 func (ir *IR) SetBlockByID(X, Y, Z define.PE, blk define.BLOCKID) {
+	X += ir.offsetX
+	Y += ir.offsetY
+	Z += ir.offsetZ
 	ChunkX, ChunkZ := X>>4, Z>>4
 	c, hasK := ir.Chunks[[2]define.PE{ChunkX, ChunkZ}]
 	if !hasK {
@@ -36,6 +57,9 @@ func (ir *IR) SetBlockByID(X, Y, Z define.PE, blk define.BLOCKID) {
 }
 
 func (ir *IR) SetNbtBlock(X, Y, Z define.PE, blk define.BlockDescribe, nbt define.Nbt) {
+	X += ir.offsetX
+	Y += ir.offsetY
+	Z += ir.offsetZ
 	ChunkX, ChunkZ := X>>4, Z>>4
 	c, hasK := ir.Chunks[[2]define.PE{ChunkX, ChunkZ}]
 	if !hasK {
@@ -56,6 +80,9 @@ func (ir *IR) BlockID(blk define.BlockDescribe) define.BLOCKID {
 }
 
 func (ir *IR) SetBlock(X, Y, Z define.PE, blk define.BlockDescribe) {
+	X += ir.offsetX
+	Y += ir.offsetY
+	Z += ir.offsetZ
 	ir.Counter += 1
 	ChunkX, ChunkZ := X>>4, Z>>4
 	c, hasK := ir.Chunks[[2]define.PE{ChunkX, ChunkZ}]
