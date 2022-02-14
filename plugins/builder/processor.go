@@ -101,19 +101,19 @@ func (p *Processor) set(cmds []string) {
 			return
 		}
 	} else {
-		X, err = strconv.Atoi(cmds[1])
+		X, err = strconv.Atoi(cmds[0])
 		if err != nil {
-			fmt.Println("X 坐标 ", cmds[1], " 不是一个整数")
+			fmt.Println("X 坐标 ", cmds[0], " 不是一个整数")
 			return
 		}
-		Y, err = strconv.Atoi(cmds[2])
+		Y, err = strconv.Atoi(cmds[1])
 		if err != nil {
-			fmt.Println("Y 坐标 ", cmds[2], " 不是一个整数")
+			fmt.Println("Y 坐标 ", cmds[1], " 不是一个整数")
 			return
 		}
-		Z, err = strconv.Atoi(cmds[3])
+		Z, err = strconv.Atoi(cmds[2])
 		if err != nil {
-			fmt.Println("Z 坐标 ", cmds[3], " 不是一个整数")
+			fmt.Println("Z 坐标 ", cmds[2], " 不是一个整数")
 			return
 		}
 	}
@@ -121,7 +121,7 @@ func (p *Processor) set(cmds []string) {
 	if len(cmds) == 1 {
 		speedStr = cmds[0]
 	} else if len(cmds) == 4 {
-		speedStr = cmds[4]
+		speedStr = cmds[3]
 	}
 	if speedStr != "" {
 		speed, err := strconv.Atoi(speedStr)
@@ -174,8 +174,7 @@ func (p *Processor) buildStructure(cmds []string) {
 
 func (p *Processor) BuildfromIR(ir *ir.IR) {
 	if p.Busy {
-		fmt.Println("Bot Busy!")
-		return
+		fmt.Println("Build ir fail: Bot Busy!")
 	} else {
 		p.Busy = true
 	}
