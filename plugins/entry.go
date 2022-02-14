@@ -7,6 +7,7 @@ import (
 	"main.go/plugins/define"
 	"main.go/plugins/fastbuilder"
 	cqchat "main.go/plugins/gocq"
+	"main.go/plugins/mapart"
 	"main.go/plugins/world_mirror"
 )
 
@@ -30,6 +31,7 @@ func Pool() map[string]func() define.Plugin {
 		pool["cdump"] = func() define.Plugin { return &cdump.CDump{} }
 		pool["world_mirror"] = func() define.Plugin { return &world_mirror.WorldMirror{} }
 		pool["builder"] = func() define.Plugin { return &builder.Builder{} }
+		pool["map_art"] = func() define.Plugin { return &mapart.MapArt{} }
 
 		isInit = true
 	}
