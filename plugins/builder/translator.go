@@ -31,7 +31,7 @@ func (t *Translator) NewRemapObject(group int, blk define.BlockDescribe, blkId d
 	newID, hask := t.LookUp[blk]
 	if !hask {
 		newID := len(t.Palette)
-		t.Palette = append(t.Palette, blk)
+		t.Palette = append(t.Palette, &blk)
 		t.LookUp[blk] = define.BLOCKID(newID)
 		g[blkId] = define.BLOCKID(newID)
 	} else {
@@ -50,7 +50,7 @@ func NewTranslator() *Translator {
 		Name: "air",
 		Meta: 0,
 	}] = define.AIRBLK
-	ret.Palette[define.AIRBLK] = define.BlockDescribe{
+	ret.Palette[define.AIRBLK] = &define.BlockDescribe{
 		Name: "air",
 		Meta: 0,
 	}

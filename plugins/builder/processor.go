@@ -6,6 +6,7 @@ import (
 	"main.go/plugins/builder/ir"
 	"main.go/plugins/builder/ir/subChunk/plain"
 	"main.go/plugins/builder/loader/bdump"
+	"main.go/plugins/builder/loader/leveldb"
 	"main.go/task"
 	"strconv"
 	"strings"
@@ -152,21 +153,24 @@ func (p *Processor) buildStructure(cmds []string) {
 		return
 	}
 	filePath := cmds[0]
-	irStructure := ir.NewIR(255, &plain.Storage{})
 
+	X, Y, Z, err := p.GetPos()
+	irStructure := ir.NewIRWithOffset(&plain.Storage{}, X, Y, Z)
+	if err != nil {
+		fmt.Printf("Get Pos error! (%v)\n", err)
+		return
+	}
 	if strings.HasSuffix(filePath, ".bdx") {
-		X, Y, Z, err := p.GetPos()
-		if err != nil {
-			fmt.Printf("Get Pos error! (%v)\n", err)
-			return
-		}
-		err = bdump.LoadBDX(filePath, X, Y, Z, false, func(s string) {
+		err = bdump.LoadBDX(filePath, false, func(s string) {
 			fmt.Println(s)
 		}, irStructure)
-		if err != nil {
-			fmt.Println("BDX decode error! ", err)
-			return
-		}
+	} else {
+		err = leveldb.LoadLeveldb(filePath, func(s string) {
+			fmt.Println(s)
+		}, irStructure)
+	}
+	if err != nil {
+		fmt.Printf("Decode Error (%v)\n", err)
 	}
 	fmt.Printf("起始坐标 X=%v, Y=%v, Z=%v, 期望速度=%v block/s\n", p.X, p.Y, p.Z, p.expectSpeed)
 	go p.BuildfromIR(irStructure)
@@ -255,7 +259,7 @@ func (p *Processor) LaunchOpsGroup(group *define.OpsGroup) {
 		}
 		//fmt.Println(op)
 
-		blk = &group.Palette[op.BlockID]
+		blk = group.Palette[op.BlockID]
 		p.BlockCounter += 1
 		cmd = fmt.Sprintf("setblock %d %d %d %v %d", op.Pos[0], op.Pos[1], op.Pos[2], blk.Name, blk.Meta)
 		//if op.Spawn == 0 && op.Level == define.BuildLevelBlock {

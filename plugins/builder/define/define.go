@@ -16,11 +16,11 @@ func NewBlock2IDMapping() BlockDescribe2BlockIDMapping {
 	return r
 }
 
-type BlockID2BlockDescribeMapping []BlockDescribe
+type BlockID2BlockDescribeMapping []*BlockDescribe
 
 func NewID2BlockMapping() BlockID2BlockDescribeMapping {
 	r := make(BlockID2BlockDescribeMapping, 1, 32)
-	r[0] = BlockDescribe{"air", 0}
+	r[0] = &BlockDescribe{"air", 0}
 	return r
 }
 

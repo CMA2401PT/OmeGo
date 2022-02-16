@@ -88,7 +88,7 @@ func (o *Builder) GetIR() (*ir.IR, error) {
 	if !o.processor.posSetted {
 		return nil, fmt.Errorf("cannot get Build Handler, Pos not setted")
 	}
-	irStructure := ir.NewIRWithOffset(255, &plain.Storage{}, o.processor.X, o.processor.Y, o.processor.Z)
+	irStructure := ir.NewIRWithOffset(&plain.Storage{}, o.processor.X, o.processor.Y, o.processor.Z)
 	return irStructure, nil
 }
 

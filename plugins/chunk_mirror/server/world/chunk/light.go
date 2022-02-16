@@ -18,7 +18,7 @@ func (a *lightArea) insertBlockLightNodes(queue *list.List) {
 
 // anyLightBlocks checks if there are any blocks in the SubChunk passed that emit light.
 func anyLightBlocks(sub *SubChunk) bool {
-	for _, layer := range sub.storages {
+	for _, layer := range sub.Storages {
 		for _, id := range layer.palette.values {
 			if LightBlocks[id] != 0 {
 				return true

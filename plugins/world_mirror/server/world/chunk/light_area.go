@@ -160,7 +160,7 @@ func (a *lightArea) iterSubChunk(f func(x, y, z int)) {
 // through the slice m passed, finding the highest value in this slice between those runtime IDs and returning it.
 func (a *lightArea) highest(pos cube.Pos, m []uint8) uint8 {
 	x, y, z, sub := uint8(pos[0]&0xf), uint8(pos[1]&0xf), uint8(pos[2]&0xf), a.sub(pos)
-	storages, l := sub.storages, len(sub.storages)
+	storages, l := sub.Storages, len(sub.Storages)
 
 	switch l {
 	case 0:
@@ -211,7 +211,7 @@ func (a *lightArea) initialiseLightSlices() {
 
 // sub returns the SubChunk corresponding to a cube.Pos.
 func (a *lightArea) sub(pos cube.Pos) *SubChunk {
-	return a.chunk(pos).subChunk(int16(pos[1]))
+	return a.chunk(pos).SubChunk(int16(pos[1]))
 }
 
 // chunk returns the Chunk corresponding to a cube.Pos.

@@ -30,7 +30,7 @@ func ReadBrString(br *bytes.Buffer) (string, error) {
 	return str, nil
 }
 
-func LoadBDX(filePath string, oX, oY, oZ define.PE, needSign bool, sendNotice func(string), ir *ir.IR) error {
+func LoadBDX(filePath string, needSign bool, sendNotice func(string), ir *ir.IR) error {
 	file, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
 	if err != nil {
 		return I18n.ProcessSystemFileError(err)
@@ -162,7 +162,7 @@ func LoadBDX(filePath string, oX, oY, oZ define.PE, needSign bool, sendNotice fu
 			}
 			blockData := binary.BigEndian.Uint16(rdst)
 			blockName := &blocksStrPool[int(blockId)]
-			ir.SetBlock(define.PE(brushPosition[0])+oX, define.PE(brushPosition[1])+oY, define.PE(brushPosition[2])+oZ, define.BlockDescribe{
+			ir.SetBlock(define.PE(brushPosition[0]), define.PE(brushPosition[1]), define.PE(brushPosition[2]), define.BlockDescribe{
 				Name: *blockName,
 				Meta: blockData,
 			})
@@ -300,7 +300,7 @@ func LoadBDX(filePath string, oX, oY, oZ define.PE, needSign bool, sendNotice fu
 			if fbuf[3] == 1 {
 				fbools[3] = true
 			}
-			ir.SetNbtBlock(define.PE(brushPosition[0])+oX, define.PE(brushPosition[1])+oY, define.PE(brushPosition[2])+oZ, define.BlockDescribe{
+			ir.SetNbtBlock(define.PE(brushPosition[0]), define.PE(brushPosition[1]), define.PE(brushPosition[2]), define.BlockDescribe{
 				Name: "set_cmd_block",
 				Meta: 0,
 			}, define.Nbt{
@@ -371,7 +371,7 @@ func LoadBDX(filePath string, oX, oY, oZ define.PE, needSign bool, sendNotice fu
 			if fbuf[3] == 1 {
 				fbools[3] = true
 			}
-			ir.SetNbtBlock(define.PE(brushPosition[0])+oX, define.PE(brushPosition[1])+oY, define.PE(brushPosition[2])+oZ, define.BlockDescribe{
+			ir.SetNbtBlock(define.PE(brushPosition[0]), define.PE(brushPosition[1]), define.PE(brushPosition[2]), define.BlockDescribe{
 				Name: *blockName,
 				Meta: uint16(blockData),
 			}, define.Nbt{
@@ -431,7 +431,7 @@ func LoadBDX(filePath string, oX, oY, oZ define.PE, needSign bool, sendNotice fu
 			if fbuf[3] == 1 {
 				fbools[3] = true
 			}
-			ir.SetNbtBlock(define.PE(brushPosition[0])+oX, define.PE(brushPosition[1])+oY, define.PE(brushPosition[2])+oZ, define.BlockDescribe{
+			ir.SetNbtBlock(define.PE(brushPosition[0]), define.PE(brushPosition[1]), define.PE(brushPosition[2]), define.BlockDescribe{
 				Name: "command_block",
 				Meta: binary.BigEndian.Uint16(rdst),
 			}, define.Nbt{
@@ -485,7 +485,7 @@ func LoadBDX(filePath string, oX, oY, oZ define.PE, needSign bool, sendNotice fu
 			}
 			runtimeId := uint32(binary.BigEndian.Uint16(runtimeIdMem))
 			Block := runtimeIdPoolUsing[runtimeId].Take()
-			ir.SetBlock(define.PE(brushPosition[0])+oX, define.PE(brushPosition[1])+oY, define.PE(brushPosition[2])+oZ, define.BlockDescribe{
+			ir.SetBlock(define.PE(brushPosition[0]), define.PE(brushPosition[1]), define.PE(brushPosition[2]), define.BlockDescribe{
 				Name: *Block.Name,
 				Meta: Block.Data,
 			})
@@ -497,7 +497,7 @@ func LoadBDX(filePath string, oX, oY, oZ define.PE, needSign bool, sendNotice fu
 			}
 			runtimeId := binary.BigEndian.Uint32(runtimeIdMem)
 			Block := runtimeIdPoolUsing[runtimeId].Take()
-			ir.SetBlock(define.PE(brushPosition[0])+oX, define.PE(brushPosition[1])+oY, define.PE(brushPosition[2])+oZ, define.BlockDescribe{
+			ir.SetBlock(define.PE(brushPosition[0]), define.PE(brushPosition[1]), define.PE(brushPosition[2]), define.BlockDescribe{
 				Name: *Block.Name,
 				Meta: Block.Data,
 			})
@@ -553,7 +553,7 @@ func LoadBDX(filePath string, oX, oY, oZ define.PE, needSign bool, sendNotice fu
 				fbools[3] = true
 			}
 			Block := runtimeIdPoolUsing[dataval].Take()
-			ir.SetNbtBlock(define.PE(brushPosition[0])+oX, define.PE(brushPosition[1])+oY, define.PE(brushPosition[2])+oZ, define.BlockDescribe{
+			ir.SetNbtBlock(define.PE(brushPosition[0]), define.PE(brushPosition[1]), define.PE(brushPosition[2]), define.BlockDescribe{
 				Name: *Block.Name,
 				Meta: Block.Data,
 			}, define.Nbt{

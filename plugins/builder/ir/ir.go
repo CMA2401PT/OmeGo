@@ -11,34 +11,31 @@ type IR struct {
 	Block2ID                  define.BlockDescribe2BlockIDMapping
 	ID2Block                  define.BlockID2BlockDescribeMapping
 	Counter                   int
-	MaxHeight                 uint16
 	offsetX, offsetY, offsetZ define.PE
 }
 
-func NewIR(MaxHeight uint16, Template subChunk.SubChunk) *IR {
+func NewIR(Template subChunk.SubChunk) *IR {
 	ir := &IR{
-		Template:  Template,
-		Chunks:    make(map[[2]define.PE]*Chunk),
-		Block2ID:  define.NewBlock2IDMapping(),
-		ID2Block:  define.NewID2BlockMapping(),
-		MaxHeight: MaxHeight,
-		offsetX:   0,
-		offsetY:   0,
-		offsetZ:   0,
+		Template: Template,
+		Chunks:   make(map[[2]define.PE]*Chunk),
+		Block2ID: define.NewBlock2IDMapping(),
+		ID2Block: define.NewID2BlockMapping(),
+		offsetX:  0,
+		offsetY:  0,
+		offsetZ:  0,
 	}
 	return ir
 }
 
-func NewIRWithOffset(MaxHeight uint16, Template subChunk.SubChunk, X, Y, Z define.PE) *IR {
+func NewIRWithOffset(Template subChunk.SubChunk, X, Y, Z define.PE) *IR {
 	ir := &IR{
-		Template:  Template,
-		Chunks:    make(map[[2]define.PE]*Chunk),
-		Block2ID:  define.NewBlock2IDMapping(),
-		ID2Block:  define.NewID2BlockMapping(),
-		MaxHeight: MaxHeight,
-		offsetX:   X,
-		offsetY:   Y,
-		offsetZ:   Z,
+		Template: Template,
+		Chunks:   make(map[[2]define.PE]*Chunk),
+		Block2ID: define.NewBlock2IDMapping(),
+		ID2Block: define.NewID2BlockMapping(),
+		offsetX:  X,
+		offsetY:  Y,
+		offsetZ:  Z,
 	}
 	return ir
 }
@@ -73,7 +70,7 @@ func (ir *IR) BlockID(blk define.BlockDescribe) define.BLOCKID {
 	blkID, hasK := ir.Block2ID[blk]
 	if !hasK {
 		blkID = define.BLOCKID(len(ir.ID2Block))
-		ir.ID2Block = append(ir.ID2Block, blk)
+		ir.ID2Block = append(ir.ID2Block, &blk)
 		ir.Block2ID[blk] = blkID
 	}
 	return blkID
@@ -97,7 +94,9 @@ func (ir *IR) SetBlockID2BlockDescribeMapping(mapping define.BlockID2BlockDescri
 	ir.ID2Block = mapping
 	ir.Block2ID = make(define.BlockDescribe2BlockIDMapping)
 	for platteI, block := range ir.ID2Block {
-		ir.Block2ID[block] = define.BLOCKID(platteI)
+		if block != nil {
+			ir.Block2ID[*block] = define.BLOCKID(platteI)
+		}
 	}
 }
 

@@ -55,18 +55,18 @@ func (chunk *Chunk) Biomes() []*PalettedStorage {
 // Block returns the runtime ID of the block at a given x, y and z in a chunk at the given layer. If no
 // sub chunk exists at the given y, the block is assumed to be air.
 func (chunk *Chunk) Block(x uint8, y int16, z uint8, layer uint8) uint32 {
-	sub := chunk.subChunk(y)
-	if sub.Empty() || uint8(len(sub.storages)) <= layer {
+	sub := chunk.SubChunk(y)
+	if sub.Empty() || uint8(len(sub.Storages)) <= layer {
 		return chunk.air
 	}
-	return sub.storages[layer].At(x, uint8(y), z)
+	return sub.Storages[layer].At(x, uint8(y), z)
 }
 
 // SetBlock sets the runtime ID of a block at a given x, y and z in a chunk at the given layer. If no
 // SubChunk exists at the given y, a new SubChunk is created and the block is set.
 func (chunk *Chunk) SetBlock(x uint8, y int16, z uint8, layer uint8, block uint32) {
 	sub := chunk.sub[chunk.subIndex(y)]
-	if uint8(len(sub.storages)) <= layer && block == chunk.air {
+	if uint8(len(sub.Storages)) <= layer && block == chunk.air {
 		// Air was set at n layer, but there were less than n layers, so there already was air there.
 		// Don't do anything with this, just return.
 		return
@@ -86,7 +86,7 @@ func (chunk *Chunk) SetBiome(x uint8, y int16, z uint8, biome uint32) {
 
 // Light returns the light level at a specific position in the chunk.
 func (chunk *Chunk) Light(x uint8, y int16, z uint8) uint8 {
-	ux, uy, uz, sub := x&0xf, uint8(y&0xf), z&0xf, chunk.subChunk(y)
+	ux, uy, uz, sub := x&0xf, uint8(y&0xf), z&0xf, chunk.SubChunk(y)
 	sky := sub.SkyLight(ux, uy, uz)
 	if sky == 15 {
 		// The skylight was already on the maximum value, so return it without checking block light.
@@ -100,7 +100,7 @@ func (chunk *Chunk) Light(x uint8, y int16, z uint8) uint8 {
 
 // SkyLight returns the skylight level at a specific position in the chunk.
 func (chunk *Chunk) SkyLight(x uint8, y int16, z uint8) uint8 {
-	return chunk.subChunk(y).SkyLight(x&15, uint8(y&15), z&15)
+	return chunk.SubChunk(y).SkyLight(x&15, uint8(y&15), z&15)
 }
 
 // HighestLightBlocker iterates from the highest non-empty sub chunk downwards to find the Y value of the
@@ -110,7 +110,7 @@ func (chunk *Chunk) HighestLightBlocker(x, z uint8) int16 {
 	for index := int16(len(chunk.sub) - 1); index >= 0; index-- {
 		if sub := chunk.sub[index]; !sub.Empty() {
 			for y := 15; y >= 0; y-- {
-				if FilteringBlocks[sub.storages[0].At(x, uint8(y), z)] == 15 {
+				if FilteringBlocks[sub.Storages[0].At(x, uint8(y), z)] == 15 {
 					return int16(y) | chunk.subY(index)
 				}
 			}
@@ -125,7 +125,7 @@ func (chunk *Chunk) HighestBlock(x, z uint8) int16 {
 	for index := int16(len(chunk.sub) - 1); index >= 0; index-- {
 		if sub := chunk.sub[index]; !sub.Empty() {
 			for y := 15; y >= 0; y-- {
-				if rid := sub.storages[0].At(x, uint8(y), z); rid != chunk.air {
+				if rid := sub.Storages[0].At(x, uint8(y), z); rid != chunk.air {
 					return int16(y) | chunk.subY(index)
 				}
 			}
@@ -143,8 +143,8 @@ func (chunk *Chunk) Compact() {
 	}
 }
 
-// subChunk finds the correct SubChunk in the Chunk by a Y value.
-func (chunk *Chunk) subChunk(y int16) *SubChunk {
+// SubChunk finds the correct SubChunk in the Chunk by a Y value.
+func (chunk *Chunk) SubChunk(y int16) *SubChunk {
 	return chunk.sub[chunk.subIndex(y)]
 }
 

@@ -95,7 +95,7 @@ func decodeSubChunk(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) (*SubC
 		if err != nil {
 			return nil, err
 		}
-		sub.storages = append(sub.storages, storage)
+		sub.Storages = append(sub.Storages, storage)
 	case 8, 9:
 		// Version 8 allows up to 256 layers for one sub chunk.
 		storageCount, err := buf.ReadByte()
@@ -111,10 +111,10 @@ func decodeSubChunk(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) (*SubC
 			// value of the subchunk. This means that we need to translate it to an index.
 			*index = uint8(int8(uIndex) - int8(c.r[0]>>4))
 		}
-		sub.storages = make([]*PalettedStorage, storageCount)
+		sub.Storages = make([]*PalettedStorage, storageCount)
 
 		for i := byte(0); i < storageCount; i++ {
-			sub.storages[i], err = decodePalettedStorage(buf, e, BlockPaletteEncoding)
+			sub.Storages[i], err = decodePalettedStorage(buf, e, BlockPaletteEncoding)
 			if err != nil {
 				return nil, err
 			}

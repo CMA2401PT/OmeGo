@@ -69,7 +69,7 @@ func registerBlockState(s blockState) {
 		airRID = rid
 	}
 	stateRuntimeIDs[h] = rid
-	blocks = append(blocks, unknownBlock{s})
+	blocks = append(blocks, unknownBlock{s, nil})
 
 	nbtBlocks = append(nbtBlocks, false)
 	randomTickBlocks = append(randomTickBlocks, false)
@@ -81,6 +81,7 @@ func registerBlockState(s blockState) {
 // states that haven't yet been added.
 type unknownBlock struct {
 	blockState
+	nbt map[string]interface{}
 }
 
 // EncodeBlock ...
@@ -96,6 +97,18 @@ func (unknownBlock) Model() BlockModel {
 // Hash ...
 func (b unknownBlock) Hash() uint64 {
 	return math.MaxUint64
+}
+
+func (b unknownBlock) DecodeNBT(data map[string]interface{}) interface{} {
+	b.nbt = data
+	return b
+}
+
+func (b unknownBlock) EncodeNBT() map[string]interface{} {
+	if b.nbt == nil {
+		return make(map[string]interface{})
+	}
+	return b.nbt
 }
 
 // blockState holds a combination of a name and properties, together with a version.

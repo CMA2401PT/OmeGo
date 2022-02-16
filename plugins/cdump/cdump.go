@@ -33,30 +33,44 @@ func (p *Processor) process(cmd []string) {
 	//}
 
 	startPosStr := strings.Split(startStr, ":")
-	if len(startPosStr) != 2 {
+	if len(startPosStr) != 3 {
 		fmt.Println("Src format error")
 		return
 	}
 	startX, err := strconv.Atoi(startPosStr[0])
 	if err != nil {
 		fmt.Println("Src [X] format error")
+		return
 	}
-	startZ, err := strconv.Atoi(startPosStr[1])
+	startY, err := strconv.Atoi(startPosStr[1])
+	if err != nil {
+		fmt.Println("Src [Y] format error")
+		return
+	}
+	startZ, err := strconv.Atoi(startPosStr[2])
 	if err != nil {
 		fmt.Println("Src [Z] format error")
+		return
 	}
 	endPosStr := strings.Split(endStr, ":")
-	if len(startPosStr) != 2 {
+	if len(startPosStr) != 3 {
 		fmt.Println("Src format error")
 		return
 	}
 	endX, err := strconv.Atoi(endPosStr[0])
 	if err != nil {
 		fmt.Println("End [X] format error")
+		return
 	}
-	endZ, err := strconv.Atoi(endPosStr[1])
+	endY, err := strconv.Atoi(endPosStr[1])
+	if err != nil {
+		fmt.Println("End [Y] format error")
+		return
+	}
+	endZ, err := strconv.Atoi(endPosStr[2])
 	if err != nil {
 		fmt.Println("End [Z] format error")
+		return
 	}
 
 	if startX > endX {
@@ -112,7 +126,7 @@ func (p *Processor) process(cmd []string) {
 	fmt.Fprintf(logFile, "// Structure Dump Record: chunks to dump end @ chunk [X=%v,Z=%v]\n", endCX, endCZ)
 	fmt.Fprintf(logFile, "// Structure Dump Record: blocks availabe in range [X=%v,Z=%v] ~ [X=%v,Z=%v]\n", startXR, startZR, endXR, endZR)
 	fmt.Fprintf(logFile, "// Structure Dump Record: load anchor point is [X=%v,Z=%v]\n", startX, startZ)
-	fmt.Fprintf(logFile, "#> Structure %v %v %v %v %v %v\n", name, startX, startZ, endX, endZ, time.Now().Format("[2006-01-02-15:04:05]"))
+	fmt.Fprintf(logFile, "#> Structure %v %v %v %v %v %v %v %v\n", name, startX, startY, startZ, endX, endY, endZ, time.Now().Format("[2006-01-02-15:04:05]"))
 	fmt.Fprintf(logFile, "// Begining Dump Log:\n")
 
 	dumpComplete := false
